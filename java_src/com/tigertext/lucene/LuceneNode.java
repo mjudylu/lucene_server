@@ -11,12 +11,13 @@ public class LuceneNode {
 
 	public static void main(String[] args) {
 		String nodeName = args.length >= 1 ? args[0] : "lucene@localhost";
-		jlog.info("Hi, I'm the Java Lucene Node\nNode: " + nodeName);
 		OtpNode node;
 		try {
 			node = args.length >= 2 ? new OtpNode(nodeName, args[1])
 					: new OtpNode(nodeName);
 			OtpGenServer server = new LuceneServer(node);
+			jlog.info("Java Lucene Node Started at: " + nodeName);
+			System.out.println("READY");
 			while (true) {
 				try {
 					server.start();

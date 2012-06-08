@@ -184,6 +184,9 @@ public class LuceneServer extends OtpGenServer {
 		} else if (cmdName.equals("add")) {
 			// {add, Items :: [[{atom(), string()}]]}
 			add(buildItems(((OtpErlangList) cmdTuple.elementAt(1)).elements()));
+		} else if (cmdName.equals("stop")) { // {stop}
+			jlog.info("Stopping");
+			throw new OtpStopException();
 		}
 	}
 

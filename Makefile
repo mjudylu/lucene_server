@@ -1,13 +1,12 @@
-JAVA   := java -classpath ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/lucene-core-3.6.0.jar com.tigertext.lucene.LuceneNode
 ERLANG := erl -pa ebin -pa deps/*/ebin -smp enable -s lager -setcookie tigertext_lucene ${ERL_ARGS}
 
-all:
-	rebar get-deps && rebar compile
+all: clean
+	rebar get-deps && rebar --verbose compile
 
 erl:
-	rebar compile
+	rebar skip_deps=true --verbose compile
 
-clean: java_clean
+clean:
 	rebar clean
 
 build_plt: erl
@@ -26,23 +25,6 @@ shell: erl
 run: erl
 	if [ -n "${NODE}" ]; then ${ERLANG} -name ${NODE}@`hostname` -boot start_sasl -s lucene_server; \
 	else ${ERLANG} -name lucene_server@`hostname` -boot start_sasl -s lucene_server; \
-	fi
-
-java_clean:
-	rm -rf bin/*
-
-java_build:
-	mkdir -p bin
-	javac -g -verbose -deprecation -sourcepath java_src -classpath ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/lucene-core-3.6.0.jar -d bin `find java_src -name *.java`
-
-jar: java_build
-	rm -f priv/lucene_server.jar
-	cd bin && jar cf ../priv/lucene_server.jar *
-
-java_run: java_build
-	epmd -daemon && \
-	if [ -n "${NODE}" ]; then ${JAVA} ${NODE}@`hostname` tigertext_lucene; \
-	else ${JAVA} lucene@`hostname` tigertext_lucene; \
 	fi
 
 test: erl

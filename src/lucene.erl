@@ -9,7 +9,7 @@
 %%NOTE: We let java server run for as long as it needs to run.
 %%      Even if we choose a smaller timeout, it will run for a longer time anyway if it needs to.
 -define(CALL_TIMEOUT, infinity).
--define(LUCENE_SERVER, {lucene_server, lucene_server:java_node()}).
+-define(LUCENE_SERVER, {lucene_server, java_node()}).
 
 -behavior(gen_server).
 
@@ -17,10 +17,11 @@
 -export([start_link/0]).
 
 -export([process/0]).
--export([add/1, del/1, clear/0]).
+-export([add/1, del/1, clear/0, stop/0]).
 -export([match/2, match/3, continue/2, continue/3]).
 
--record(state, {java_node :: atom()}).
+-record(state, {java_port :: port(),
+                java_node :: atom()}).
 -opaque state() :: #state{}.
 
 -type page_token() :: binary().
@@ -58,6 +59,10 @@ continue(PageToken, PageSize) -> continue(PageToken, PageSize, ?CALL_TIMEOUT).
 -spec continue(page_token(), pos_integer(), infinity | pos_integer()) -> {[string()], metadata()} | '$end_of_table'.
 continue(PageToken, PageSize, Timeout) -> gen_server:call(?LUCENE_SERVER, {continue, PageToken, PageSize}, Timeout).
 
+%% @doc Stops the java process
+-spec stop() -> ok.
+stop() -> gen_server:cast(?LUCENE_SERVER, {stop}).
+
 %% @doc Clears the whole index
 %%      USE WITH CAUTION
 -spec clear() -> ok.
@@ -76,25 +81,54 @@ del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, Query}).
 %%-------------------------------------------------------------------
 -spec init([]) -> {ok, state()}.
 init([]) ->
-	JavaNode = lucene_server:java_node(),
-    true = link(process()),
-    true = erlang:monitor_node(JavaNode, true),
-    {ok, #state{java_node = JavaNode}}.
+  case os:find_executable("java") of
+    [] ->
+      _ = lager:critical("You need to have java installed.", []),
+      throw({stop, java_missing});
+    Java ->
+      JavaNode = java_node(),
+      Port =
+        erlang:open_port({spawn_executable, Java},
+                         [{line,1000}, stderr_to_stdout,
+                          {args, ["-classpath",
+                                  "./priv/lucene-server.jar:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/lucene-core-3.6.0.jar",
+                                  "com.tigertext.lucene.LuceneNode",
+                                  JavaNode, erlang:get_cookie()]}]),
+      {ok, #state{java_port = Port, java_node = JavaNode}}
+  end.
 
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
 handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.
 
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.
 handle_info({nodedown, JavaNode}, State = #state{java_node = JavaNode}) ->
-    lager:error("Java node is down!"),
-    {stop, nodedown, State};
+  lager:error("Java node is down!"),
+  {stop, nodedown, State};
+handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
+  _ = lager:info("Java node started"),
+  true = link(process()),
+  true = erlang:monitor_node(State#state.java_node, true),
+  {noreply, State};
+handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
+  _ = lager:info("Java Log:~n\t~s", [JavaLog]),
+  {noreply, State};
 handle_info(Info, State) ->
-    lager:warning("Unexpected info: ~p", [Info]),
-    {noreply, State}.
+  _ = lager:warning("Unexpected info: ~p", [Info]),
+  {noreply, State}.
+
+-spec terminate(_, state()) -> ok.
+terminate(_Reason, State) -> erlang:port_close(State#state.java_port).
 
 -spec handle_cast(term(), state()) -> {noreply, state()}.
 handle_cast(_Msg, State) -> {noreply, State}.
--spec terminate(_, state()) -> ok.
-terminate(_Reason, _State) -> ok.
 -spec code_change(term(), state(), term()) -> {ok, state()}.
 code_change(_OldVersion, State, _Extra) -> {ok, State}.
+
+%%-------------------------------------------------------------------
+%% PRIVATE
+%%-------------------------------------------------------------------
+java_node() ->
+  case string:tokens(atom_to_list(node()), "@") of
+    [Name, Server] -> list_to_atom(Name ++ "_java@" ++ Server);
+    _Node -> throw({bad_node_name, node()})
+  end.

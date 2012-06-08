@@ -10,4 +10,4 @@ logs
 erl_crash.dump
 *.beam
 *.log
-java/lucene_server.jar
+lucene-server.jar
