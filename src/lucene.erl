@@ -87,11 +87,28 @@ init([]) ->
       throw({stop, java_missing});
     Java ->
       JavaNode = java_node(),
+      JPriv =
+        case code:priv_dir(jinterface) of
+          {error, bad_name} ->
+            lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
+            "./priv";
+          JPrivDir -> JPrivDir
+        end,
+      Priv =
+        case code:priv_dir(lucene_server) of
+          {error, bad_name} ->
+            lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
+            "./priv";
+          PrivDir -> PrivDir
+        end,
       Port =
         erlang:open_port({spawn_executable, Java},
                          [{line,1000}, stderr_to_stdout,
                           {args, ["-classpath",
-                                  "./priv/lucene-server.jar:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/lucene-core-3.6.0.jar",
+                                  string:join(
+                                    [Priv ++ "/lucene-server.jar",
+                                     Priv ++ "/lucene-core-3.6.0.jar",
+                                     JPriv ++ "/OtpErlang.jar"], ":"),
                                   "com.tigertext.lucene.LuceneNode",
                                   JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}
