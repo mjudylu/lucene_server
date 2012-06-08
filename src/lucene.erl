@@ -92,14 +92,14 @@ init([]) ->
           {error, bad_name} ->
             lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
             "./priv";
-          JPrivDir -> JPrivDir
+          JPrivDir -> filename:absname(JPrivDir)
         end,
       Priv =
         case code:priv_dir(lucene_server) of
           {error, bad_name} ->
             lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
             "./priv";
-          PrivDir -> PrivDir
+          PrivDir -> filename:absname(PrivDir)
         end,
       Port =
         erlang:open_port({spawn_executable, Java},
