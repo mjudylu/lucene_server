@@ -73,7 +73,7 @@ clear() -> gen_server:cast(?LUCENE_SERVER, {clear}).
 add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, Docs}).
 
 %% @doc Removes docs matching a certain query
--spec del([doc()]) -> ok.
+-spec del(string()) -> ok.
 del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, Query}).
 
 %%-------------------------------------------------------------------
