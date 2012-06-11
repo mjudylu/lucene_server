@@ -48,7 +48,7 @@ process() -> gen_server:call(?LUCENE_SERVER, {pid}, ?CALL_TIMEOUT).
 match(Query, PageSize) -> match(Query, PageSize, ?CALL_TIMEOUT).
 
 %% @doc Runs a query against the lucene server
--spec match(doc(), pos_integer(), infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
+-spec match(string(), pos_integer(), infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
 match(Query, PageSize, Timeout) -> gen_server:call(?LUCENE_SERVER, {match, Query, PageSize}, Timeout).
 
 %% @equiv continue(PageToken, PageSize, infinity)
@@ -133,7 +133,7 @@ handle_info(Info, State) ->
   _ = lager:warning("Unexpected info: ~p", [Info]),
   {noreply, State}.
 
--spec terminate(_, state()) -> ok.
+-spec terminate(_, state()) -> true.
 terminate(_Reason, State) -> erlang:port_close(State#state.java_port).
 
 -spec handle_cast(term(), state()) -> {noreply, state()}.
