@@ -1,0 +1,13 @@
+.classpath
+bin
+*.plt
+doc
+ebin
+deps
+.DS_Store
+log
+logs
+erl_crash.dump
+*.beam
+*.log
+lucene-server.jar

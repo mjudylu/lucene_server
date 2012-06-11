@@ -1,0 +1,12 @@
+{application, lucene_server,
+ [
+  {description, "TigerText Lucene Server"},
+  {vsn, "20120607a"},
+  {id, "lucene_server"},
+  {registered,   []},
+  {applications, [kernel,stdlib,lager]},
+  {mod, {lucene_server, []}},
+  {env, []}
+ ]
+}.
+
