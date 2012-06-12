@@ -1,6 +1,5 @@
 package com.tigertext.lucene;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
@@ -64,54 +63,6 @@ public class LuceneServer extends OtpGenServer {
 
 	protected class EndOfTableException extends Exception {
 		private static final long serialVersionUID = 3118984031523050939L;
-	}
-
-	protected class MatchResult {
-		private List<Set<Fieldable>> values;
-		private Serializable nextPage;
-		private int firstHit;
-		private int totalHits;
-
-		public MatchResult() {
-			this.values = new ArrayList<Set<Fieldable>>();
-		}
-
-		public List<Set<Fieldable>> getValues() {
-			return values;
-		}
-
-		public void addValue(Set<Fieldable> value) {
-			this.values.add(value);
-		}
-
-		public Serializable getNextPage() {
-			return nextPage;
-		}
-
-		public void setNextPage(Serializable nextPage) {
-			this.nextPage = nextPage;
-		}
-
-		@Override
-		public String toString() {
-			return "{" + values + " // " + nextPage + "}";
-		}
-
-		public void setFirstHit(int firstHit) {
-			this.firstHit = firstHit;
-		}
-
-		public void setTotalHits(int totalHits) {
-			this.totalHits = totalHits;
-		}
-
-		public int getFirstHit() {
-			return this.firstHit;
-		}
-
-		public int getTotalHits() {
-			return this.totalHits;
-		}
 	}
 
 	Analyzer analyzer;
@@ -287,14 +238,13 @@ public class LuceneServer extends OtpGenServer {
 			TopDocs topDocs = collector.topDocs();
 			ScoreDoc[] hits = topDocs.scoreDocs;
 
-			MatchResult result = new MatchResult();
-			result.setTotalHits(topDocs.totalHits);
+			int firstHit = 0;
 			if (hits.length > 0) {
-				result.setFirstHit(pageToken.getNextFirstHit());
-			} else {
-				result.setFirstHit(0);
+				firstHit = pageToken.getNextFirstHit();
 			}
 
+			List<Set<Fieldable>> values = new ArrayList<Set<Fieldable>>(
+					hits.length);
 			for (ScoreDoc sd : hits) {
 				Document d = searcher.doc(sd.doc);
 				Set<Fieldable> props = new HashSet<Fieldable>(d.getFields()
@@ -302,7 +252,7 @@ public class LuceneServer extends OtpGenServer {
 				for (Fieldable field : d.getFields()) {
 					props.add(field);
 				}
-				result.addValue(props);
+				values.add(props);
 			}
 			searcher.close();
 
@@ -312,9 +262,8 @@ public class LuceneServer extends OtpGenServer {
 			} else {
 				pageToken = new LucenePageToken();
 			}
-			result.setNextPage(pageToken);
 
-			return encodeResult(result);
+			return encodeResult(values, pageToken, topDocs.totalHits, firstHit);
 		} catch (IOException ioe) {
 			jlog.severe("Couldn't search the index: " + ioe);
 			ioe.printStackTrace();
@@ -369,22 +318,12 @@ public class LuceneServer extends OtpGenServer {
 		return item;
 	}
 
-	/**
-	 * Turns a MatchResult into {Values :: [ Value :: [{atom(), string()}]],
-	 * NextPage :: binary()}
-	 * 
-	 * @param origResult
-	 *            The original MatchResult
-	 * @return the resulting Erlang tuple
-	 * @throws IOException
-	 *             if parsing goes wrong
-	 */
-	private OtpErlangObject encodeResult(MatchResult origResult)
+	private OtpErlangObject encodeResult(List<Set<Fieldable>> origValues,
+			Serializable nextPage, int totalHits, int firstHit)
 			throws IOException {
-		jlog.entering(this.getClass().getName(), "encodeResult", origResult);
+		jlog.entering(this.getClass().getName(), "encodeResult");
 
 		// Values as a list of lists of tuples
-		List<Set<Fieldable>> origValues = origResult.getValues();
 		OtpErlangObject[] values = new OtpErlangObject[origValues.size()];
 		for (int i = 0; i < origValues.size(); i++) {
 			OtpErlangObject[] props = new OtpErlangObject[origValues.get(i)
@@ -402,19 +341,14 @@ public class LuceneServer extends OtpGenServer {
 		}
 		OtpErlangList valuesAsList = new OtpErlangList(values);
 
-		toByteArray(origResult.getNextPage());
-
 		// Metadata as a proplist
 		OtpErlangObject[] metadata = new OtpErlangObject[3];
 		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("next_page"),
-				new OtpErlangBinary(origResult.getNextPage()) });
+				new OtpErlangAtom("next_page"), new OtpErlangBinary(nextPage) });
 		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("total_hits"),
-				new OtpErlangLong(origResult.getTotalHits()) });
+				new OtpErlangAtom("total_hits"), new OtpErlangLong(totalHits) });
 		metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("first_hit"),
-				new OtpErlangLong(origResult.getFirstHit()) });
+				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
 		OtpErlangList metadataAsList = new OtpErlangList(metadata);
 
 		// Final result
@@ -422,18 +356,5 @@ public class LuceneServer extends OtpGenServer {
 				valuesAsList, metadataAsList });
 		jlog.exiting(this.getClass().getName(), "encodeResult", result);
 		return result;
-	}
-
-	private void toByteArray(final Object o) throws java.io.IOException {
-		if (o == null)
-			return;
-
-		/* need to synchronize use of the shared baos */
-		final java.io.ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		final java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(
-				baos);
-
-		oos.writeObject(o);
-		oos.flush();
 	}
 }
