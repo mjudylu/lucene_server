@@ -108,8 +108,23 @@ public class LuceneServer extends OtpGenServer {
 			try {
 				return match(new LucenePageToken(queryString), pageSize);
 			} catch (EndOfTableException eote) {
-				return new OtpErlangAtom("$end_of_table");
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("ok"),
+						new OtpErlangAtom("$end_of_table") });
+			} catch (IOException ioe) {
+				jlog.severe("Couldn't search the index: " + ioe);
+				ioe.printStackTrace();
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("error"),
+						new OtpErlangString(ioe.getMessage()) });
+			} catch (ParseException pe) {
+				jlog.severe("Bad Formatted Query");
+				pe.printStackTrace();
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("error"),
+						new OtpErlangString(pe.getMessage()) });
 			}
+
 		} else if (cmdName.atomValue().equals("continue")) {
 			// {continue, Token :: binary(), PageSize :: integer()}
 			Object pageToken = ((OtpErlangBinary) cmdTuple.elementAt(1))
@@ -118,7 +133,21 @@ public class LuceneServer extends OtpGenServer {
 			try {
 				return continueMatch(pageToken, pageSize);
 			} catch (EndOfTableException e) {
-				return new OtpErlangAtom("$end_of_table");
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("ok"),
+						new OtpErlangAtom("$end_of_table") });
+			} catch (IOException ioe) {
+				jlog.severe("Couldn't search the index: " + ioe);
+				ioe.printStackTrace();
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("error"),
+						new OtpErlangString(ioe.getMessage()) });
+			} catch (ParseException pe) {
+				jlog.severe("Bad Formatted Query");
+				pe.printStackTrace();
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("error"),
+						new OtpErlangString(pe.getMessage()) });
 			}
 		} else {
 			return new OtpErlangAtom("unknown command");
@@ -214,7 +243,8 @@ public class LuceneServer extends OtpGenServer {
 	}
 
 	protected OtpErlangObject continueMatch(Object pageTokenAsObject,
-			int pageSize) throws EndOfTableException {
+			int pageSize) throws EndOfTableException, IOException,
+			ParseException {
 		LucenePageToken pageToken = (LucenePageToken) pageTokenAsObject;
 		if (pageToken.isEmpty()) {
 			throw new LuceneServer.EndOfTableException();
@@ -224,55 +254,43 @@ public class LuceneServer extends OtpGenServer {
 	}
 
 	private OtpErlangObject match(LucenePageToken pageToken, int pageSize)
-			throws EndOfTableException {
-		try {
-			IndexReader reader = IndexReader.open(this.index);
+			throws EndOfTableException, IOException, ParseException {
+		IndexReader reader = IndexReader.open(this.index);
 
-			Query q = pageToken.getQueryString(reader, this.analyzer);
+		Query q = pageToken.getQueryString(reader, this.analyzer);
 
-			IndexSearcher searcher = new IndexSearcher(reader);
-			TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
-					.create(pageSize, true) : TopScoreDocCollector.create(
-					pageSize, pageToken.getScoreDoc(), true);
-			searcher.search(q, collector);
-			TopDocs topDocs = collector.topDocs();
-			ScoreDoc[] hits = topDocs.scoreDocs;
+		IndexSearcher searcher = new IndexSearcher(reader);
+		TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
+				.create(pageSize, true) : TopScoreDocCollector.create(pageSize,
+				pageToken.getScoreDoc(), true);
+		searcher.search(q, collector);
+		TopDocs topDocs = collector.topDocs();
+		ScoreDoc[] hits = topDocs.scoreDocs;
 
-			int firstHit = 0;
-			if (hits.length > 0) {
-				firstHit = pageToken.getNextFirstHit();
-			}
-
-			List<Set<Fieldable>> values = new ArrayList<Set<Fieldable>>(
-					hits.length);
-			for (ScoreDoc sd : hits) {
-				Document d = searcher.doc(sd.doc);
-				Set<Fieldable> props = new HashSet<Fieldable>(d.getFields()
-						.size());
-				for (Fieldable field : d.getFields()) {
-					props.add(field);
-				}
-				values.add(props);
-			}
-			searcher.close();
-
-			if (hits.length == pageSize) { // There may be a following page
-				pageToken.setScoreDoc(hits[pageSize - 1]);
-				pageToken.incrementFirstHit(pageSize);
-			} else {
-				pageToken = new LucenePageToken();
-			}
-
-			return encodeResult(values, pageToken, topDocs.totalHits, firstHit);
-		} catch (IOException ioe) {
-			jlog.severe("Couldn't search the index: " + ioe);
-			ioe.printStackTrace();
-			throw new EndOfTableException();
-		} catch (ParseException pe) {
-			jlog.severe("Bad Formatted Query");
-			pe.printStackTrace();
-			throw new EndOfTableException();
+		int firstHit = 0;
+		if (hits.length > 0) {
+			firstHit = pageToken.getNextFirstHit();
 		}
+
+		List<Set<Fieldable>> values = new ArrayList<Set<Fieldable>>(hits.length);
+		for (ScoreDoc sd : hits) {
+			Document d = searcher.doc(sd.doc);
+			Set<Fieldable> props = new HashSet<Fieldable>(d.getFields().size());
+			for (Fieldable field : d.getFields()) {
+				props.add(field);
+			}
+			values.add(props);
+		}
+		searcher.close();
+
+		if (hits.length == pageSize) { // There may be a following page
+			pageToken.setScoreDoc(hits[pageSize - 1]);
+			pageToken.incrementFirstHit(pageSize);
+		} else {
+			pageToken = new LucenePageToken();
+		}
+
+		return encodeResult(values, pageToken, topDocs.totalHits, firstHit);
 	}
 
 	private List<Set<Fieldable>> buildItems(OtpErlangObject[] objects)
@@ -353,7 +371,9 @@ public class LuceneServer extends OtpGenServer {
 
 		// Final result
 		OtpErlangTuple result = new OtpErlangTuple(new OtpErlangObject[] {
-				valuesAsList, metadataAsList });
+				new OtpErlangAtom("ok"),
+				new OtpErlangTuple(new OtpErlangObject[] { valuesAsList,
+						metadataAsList }) });
 		jlog.exiting(this.getClass().getName(), "encodeResult", result);
 		return result;
 	}
