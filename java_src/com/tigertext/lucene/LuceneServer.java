@@ -54,6 +54,14 @@ public class LuceneServer extends OtpGenServer {
 	private static final Logger jlog = Logger.getLogger(LuceneServer.class
 			.getName());
 
+	protected class UnsupportedFieldTypeException extends Exception {
+		public UnsupportedFieldTypeException(String type) {
+			super("Unsupported field type: " + type);
+		}
+
+		private static final long serialVersionUID = 8966657853257773634L;
+	}
+
 	protected class EndOfTableException extends Exception {
 		private static final long serialVersionUID = 3118984031523050939L;
 	}
@@ -179,7 +187,8 @@ public class LuceneServer extends OtpGenServer {
 		} else if (cmdName.equals("add")) {
 			// {add, Items :: [[{atom(), string()}]]}
 			try {
-				add(buildItems(((OtpErlangList) cmdTuple.elementAt(1)).elements()));
+				add(buildItems(((OtpErlangList) cmdTuple.elementAt(1))
+						.elements()));
 			} catch (UnsupportedFieldTypeException ufte) {
 				jlog.severe(ufte.getMessage());
 				ufte.printStackTrace();
