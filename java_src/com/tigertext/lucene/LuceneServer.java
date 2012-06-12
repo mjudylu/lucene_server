@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -23,7 +23,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
-import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -39,9 +38,12 @@ import com.ericsson.otp.erlang.OtpErlangBinary;
 import com.ericsson.otp.erlang.OtpErlangDouble;
 import com.ericsson.otp.erlang.OtpErlangException;
 import com.ericsson.otp.erlang.OtpErlangExit;
+import com.ericsson.otp.erlang.OtpErlangFloat;
+import com.ericsson.otp.erlang.OtpErlangInt;
 import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangLong;
 import com.ericsson.otp.erlang.OtpErlangObject;
+import com.ericsson.otp.erlang.OtpErlangRangeException;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 import com.ericsson.otp.erlang.OtpNode;
@@ -50,24 +52,26 @@ import com.ericsson.otp.stdlib.OtpGenServer;
 import com.ericsson.otp.stdlib.OtpStopException;
 
 public class LuceneServer extends OtpGenServer {
-	private static final Logger jlog = Logger.getLogger(LuceneServer.class
-			.getName());
+	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
+												.getName());
 
 	protected class UnsupportedFieldTypeException extends Exception {
 		public UnsupportedFieldTypeException(String type) {
 			super("Unsupported field type: " + type);
 		}
 
-		private static final long serialVersionUID = 8966657853257773634L;
+		private static final long	serialVersionUID	= 8966657853257773634L;
 	}
 
 	protected class EndOfTableException extends Exception {
-		private static final long serialVersionUID = 3118984031523050939L;
+		private static final long	serialVersionUID	= 3118984031523050939L;
 	}
 
-	Analyzer analyzer;
-	Directory index;
-	IndexWriter writer;
+	protected Analyzer				analyzer;
+	protected Directory				index;
+	protected IndexWriter			writer;
+	protected Map<String, String>	knownFields;
+	protected LuceneQueryParser		queryParser;
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
@@ -89,6 +93,8 @@ public class LuceneServer extends OtpGenServer {
 		this.index = new RAMDirectory();
 		this.writer = new IndexWriter(this.index, new IndexWriterConfig(
 				Version.LUCENE_36, this.analyzer));
+		this.knownFields = new HashMap<String, String>();
+		this.queryParser = new LuceneQueryParser(Version.LUCENE_36, analyzer);
 	}
 
 	@Override
@@ -100,13 +106,16 @@ public class LuceneServer extends OtpGenServer {
 		OtpErlangAtom cmdName = (OtpErlangAtom) cmdTuple.elementAt(0);
 		if (cmdName.atomValue().equals("pid")) { // {pid}
 			return super.getSelf();
-		} else if (cmdName.atomValue().equals("match") && cmdTuple.arity() == 3) {
+
+		} else if (cmdName.atomValue().equals("match")) {
 			// {match, Query :: string(), PageSize :: integer()}
 			String queryString = ((OtpErlangString) cmdTuple.elementAt(1))
 					.stringValue();
 			int pageSize = ((OtpErlangLong) cmdTuple.elementAt(2)).intValue();
 			try {
-				return match(new LucenePageToken(queryString), pageSize);
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("ok"),
+						match(new LucenePageToken(queryString), pageSize) });
 			} catch (EndOfTableException eote) {
 				return new OtpErlangTuple(new OtpErlangObject[] {
 						new OtpErlangAtom("ok"),
@@ -131,7 +140,9 @@ public class LuceneServer extends OtpGenServer {
 					.getObject();
 			int pageSize = ((OtpErlangLong) cmdTuple.elementAt(2)).intValue();
 			try {
-				return continueMatch(pageToken, pageSize);
+				return new OtpErlangTuple(new OtpErlangObject[] {
+						new OtpErlangAtom("ok"),
+						continueMatch(pageToken, pageSize) });
 			} catch (EndOfTableException e) {
 				return new OtpErlangTuple(new OtpErlangObject[] {
 						new OtpErlangAtom("ok"),
@@ -149,8 +160,11 @@ public class LuceneServer extends OtpGenServer {
 						new OtpErlangAtom("error"),
 						new OtpErlangString(pe.getMessage()) });
 			}
+
 		} else {
-			return new OtpErlangAtom("unknown command");
+			return new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("error"),
+					new OtpErlangAtom("unknown command") });
 		}
 	}
 
@@ -165,9 +179,9 @@ public class LuceneServer extends OtpGenServer {
 			// {del, Query :: string()}
 			del(((OtpErlangString) cmdTuple.elementAt(1)).stringValue());
 		} else if (cmdName.equals("add")) {
-			// {add, Items :: [[{atom(), string()}]]}
+			// {add, Docs :: [[{atom(), string()}]]}
 			try {
-				add(buildItems(((OtpErlangList) cmdTuple.elementAt(1))
+				add(buildDocs(((OtpErlangList) cmdTuple.elementAt(1))
 						.elements()));
 			} catch (UnsupportedFieldTypeException ufte) {
 				jlog.severe(ufte.getMessage());
@@ -188,19 +202,11 @@ public class LuceneServer extends OtpGenServer {
 			OtpStopException {
 	}
 
-	protected void add(List<Set<Fieldable>> items) {
-		List<Document> docs = new ArrayList<Document>(items.size());
-		for (Set<Fieldable> item : items) {
-			Document doc = new Document();
-			for (Fieldable field : item) {
-				doc.add(field);
-			}
-			docs.add(doc);
-		}
+	protected void add(List<Document> docs) {
 		try {
 			this.writer.addDocuments(docs);
 			this.writer.commit();
-			jlog.info("" + items.size() + " docs added");
+			jlog.info("" + docs.size() + " docs added");
 		} catch (CorruptIndexException cie) {
 			jlog.severe("Corrupt index!");
 			cie.printStackTrace();
@@ -213,9 +219,7 @@ public class LuceneServer extends OtpGenServer {
 	private void del(String queryString) {
 		jlog.info("Deleting " + queryString);
 		try {
-			QueryParser qp = new QueryParser(Version.LUCENE_36, "contents",
-					this.analyzer);
-			Query q = qp.parse(queryString);
+			Query q = this.queryParser.parse(this.knownFields, queryString);
 			this.writer.deleteDocuments(q);
 			this.writer.commit();
 			jlog.info("Several docs deleted");
@@ -257,7 +261,8 @@ public class LuceneServer extends OtpGenServer {
 			throws EndOfTableException, IOException, ParseException {
 		IndexReader reader = IndexReader.open(this.index);
 
-		Query q = pageToken.getQueryString(reader, this.analyzer);
+		Query q = this.queryParser.parse(this.knownFields,
+				pageToken.getQueryString());
 
 		IndexSearcher searcher = new IndexSearcher(reader);
 		TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
@@ -272,14 +277,9 @@ public class LuceneServer extends OtpGenServer {
 			firstHit = pageToken.getNextFirstHit();
 		}
 
-		List<Set<Fieldable>> values = new ArrayList<Set<Fieldable>>(hits.length);
+		List<Document> docs = new ArrayList<Document>(hits.length);
 		for (ScoreDoc sd : hits) {
-			Document d = searcher.doc(sd.doc);
-			Set<Fieldable> props = new HashSet<Fieldable>(d.getFields().size());
-			for (Fieldable field : d.getFields()) {
-				props.add(field);
-			}
-			values.add(props);
+			docs.add(searcher.doc(sd.doc));
 		}
 		searcher.close();
 
@@ -290,53 +290,76 @@ public class LuceneServer extends OtpGenServer {
 			pageToken = new LucenePageToken();
 		}
 
-		return encodeResult(values, pageToken, topDocs.totalHits, firstHit);
+		return encodeResult(docs, pageToken, topDocs.totalHits, firstHit);
 	}
 
-	private List<Set<Fieldable>> buildItems(OtpErlangObject[] objects)
+	private List<Document> buildDocs(OtpErlangObject[] objects)
 			throws UnsupportedFieldTypeException {
-		List<Set<Fieldable>> items = new ArrayList<Set<Fieldable>>(
-				objects.length);
+		List<Document> docs = new ArrayList<Document>(objects.length);
 		for (OtpErlangObject object : objects) {
-			items.add(buildItem(((OtpErlangList) object).elements()));
+			docs.add(buildDoc(((OtpErlangList) object).elements()));
 		}
-		return items;
+		return docs;
 	}
 
-	private Set<Fieldable> buildItem(OtpErlangObject[] props)
+	private Document buildDoc(OtpErlangObject[] props)
 			throws UnsupportedFieldTypeException {
-		Set<Fieldable> item = new HashSet<Fieldable>(props.length);
+		Document doc = new Document();
 		for (OtpErlangObject object : props) {
 			OtpErlangTuple prop = (OtpErlangTuple) object;
 			String key = ((OtpErlangAtom) prop.elementAt(0)).atomValue();
 			if (prop.elementAt(1) instanceof OtpErlangString) {
-				item.add(new Field(key, ((OtpErlangString) prop.elementAt(1))
+				doc.add(new Field(key, ((OtpErlangString) prop.elementAt(1))
 						.stringValue(), Field.Store.YES, Field.Index.ANALYZED));
 			} else if (prop.elementAt(1) instanceof OtpErlangList
 					&& ((OtpErlangList) prop.elementAt(1)).arity() == 0) {
-				item.add(new Field(key, "", Field.Store.YES,
+				doc.add(new Field(key, "", Field.Store.YES,
 						Field.Index.ANALYZED));
+			} else if (prop.elementAt(1) instanceof OtpErlangInt) {
+				NumericField field = new NumericField(key, Field.Store.YES,
+						true);
+				try {
+					field.setIntValue(((OtpErlangInt) prop.elementAt(1))
+							.intValue());
+				} catch (OtpErlangRangeException e) {
+					throw new UnsupportedFieldTypeException(prop.elementAt(1)
+							.getClass().getName());
+				}
+				doc.add(field);
 			} else if (prop.elementAt(1) instanceof OtpErlangLong) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
 				field.setLongValue(((OtpErlangLong) prop.elementAt(1))
 						.longValue());
-				item.add(field);
+				doc.add(field);
+			} else if (prop.elementAt(1) instanceof OtpErlangFloat) {
+				NumericField field = new NumericField(key, Field.Store.YES,
+						true);
+				try {
+					field.setFloatValue(((OtpErlangFloat) prop.elementAt(1))
+							.floatValue());
+				} catch (OtpErlangRangeException e) {
+					throw new UnsupportedFieldTypeException(prop.elementAt(1)
+							.getClass().getName());
+				}
+				doc.add(field);
 			} else if (prop.elementAt(1) instanceof OtpErlangDouble) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
 				field.setDoubleValue(((OtpErlangDouble) prop.elementAt(1))
 						.doubleValue());
-				item.add(field);
+				doc.add(field);
 			} else {
 				throw new UnsupportedFieldTypeException(prop.elementAt(1)
 						.getClass().getName());
 			}
+			this.knownFields.put(key, prop.elementAt(1).getClass().getName());
 		}
-		return item;
+		jlog.info("Known fields so far: " + this.knownFields);
+		return doc;
 	}
 
-	private OtpErlangObject encodeResult(List<Set<Fieldable>> origValues,
+	private OtpErlangObject encodeResult(List<Document> origValues,
 			Serializable nextPage, int totalHits, int firstHit)
 			throws IOException {
 		jlog.entering(this.getClass().getName(), "encodeResult");
@@ -345,9 +368,9 @@ public class LuceneServer extends OtpGenServer {
 		OtpErlangObject[] values = new OtpErlangObject[origValues.size()];
 		for (int i = 0; i < origValues.size(); i++) {
 			OtpErlangObject[] props = new OtpErlangObject[origValues.get(i)
-					.size()];
+					.getFields().size()];
 			int j = 0;
-			for (Fieldable field : origValues.get(i)) {
+			for (Fieldable field : origValues.get(i).getFields()) {
 				OtpErlangAtom keyAsAtom = new OtpErlangAtom(field.name());
 				OtpErlangString valueAsString = new OtpErlangString(
 						field.stringValue());
@@ -371,9 +394,7 @@ public class LuceneServer extends OtpGenServer {
 
 		// Final result
 		OtpErlangTuple result = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("ok"),
-				new OtpErlangTuple(new OtpErlangObject[] { valuesAsList,
-						metadataAsList }) });
+				valuesAsList, metadataAsList });
 		jlog.exiting(this.getClass().getName(), "encodeResult", result);
 		return result;
 	}
