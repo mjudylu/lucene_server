@@ -48,17 +48,19 @@ public class LuceneQueryParser extends QueryParser {
 								: Integer.parseInt(query.getUpperTerm())),
 						query.includesLower(), query.includesUpper());
 			} else if (fieldClass.equals(OtpErlangLong.class.getName())) {
-				return NumericRangeQuery.newLongRange(field,
-						(query.getLowerTerm() == null ? Long.MIN_VALUE
-								: Long.parseLong(query.getLowerTerm())),
-						(query.getUpperTerm() == null ? Long.MAX_VALUE
-								: Long.parseLong(query.getUpperTerm())),
-						query.includesLower(), query.includesUpper());
+				return NumericRangeQuery.newLongRange(
+						field,
+						(query.getLowerTerm() == null ? Long.MIN_VALUE : Long
+								.parseLong(query.getLowerTerm())),
+						(query.getUpperTerm() == null ? Long.MAX_VALUE : Long
+								.parseLong(query.getUpperTerm())), query
+								.includesLower(), query.includesUpper());
 			} else if (fieldClass.equals(OtpErlangFloat.class.getName())) {
-				return NumericRangeQuery.newFloatRange(field,
-						(query.getLowerTerm() == null ? Float.MIN_VALUE
-								: Float.parseFloat(query.getLowerTerm())),
-						(query.getUpperTerm() == null ? Float.MAX_VALUE
+				return NumericRangeQuery.newFloatRange(
+						field,
+						(query.getLowerTerm() == null ? Float.MIN_VALUE : Float
+								.parseFloat(query.getLowerTerm())), (query
+								.getUpperTerm() == null ? Float.MAX_VALUE
 								: Float.parseFloat(query.getUpperTerm())),
 						query.includesLower(), query.includesUpper());
 			} else if (fieldClass.equals(OtpErlangDouble.class.getName())) {
@@ -72,10 +74,33 @@ public class LuceneQueryParser extends QueryParser {
 				return query;
 			}
 		} catch (NumberFormatException nfe) {
-			jlog.info("Couldn't parse range: " + field + ":[" + part1 + " TO "
+			jlog.finer("Couldn't parse range: " + field + ":[" + part1 + " TO "
 					+ part2 + "]");
 			nfe.printStackTrace();
 			return query;
+		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.apache.lucene.queryParser.QueryParser#getFieldQuery(java.lang.String,
+	 * java.lang.String, boolean)
+	 */
+	@Override
+	protected Query getFieldQuery(String field, String queryText, boolean quoted)
+			throws ParseException {
+		String fieldClass = this.knownFields.get(field);
+		if (fieldClass.equals(OtpErlangInt.class.getName())
+				|| fieldClass.equals(OtpErlangLong.class.getName())
+				|| fieldClass.equals(OtpErlangFloat.class.getName())
+				|| fieldClass.equals(OtpErlangDouble.class.getName())) {
+			jlog.finer("Turning " + queryText + " into a range query for "
+					+ field);
+			return getRangeQuery(field, queryText, queryText, true);
+		} else {
+			return super.getFieldQuery(field, queryText, quoted);
 		}
 	}
 
