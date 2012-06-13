@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -70,7 +68,6 @@ public class LuceneServer extends OtpGenServer {
 	protected Analyzer				analyzer;
 	protected Directory				index;
 	protected IndexWriter			writer;
-	protected Map<String, String>	knownFields;
 	protected LuceneQueryParser		queryParser;
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
@@ -93,7 +90,6 @@ public class LuceneServer extends OtpGenServer {
 		this.index = new RAMDirectory();
 		this.writer = new IndexWriter(this.index, new IndexWriterConfig(
 				Version.LUCENE_36, this.analyzer));
-		this.knownFields = new HashMap<String, String>();
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36, analyzer);
 	}
 
@@ -219,7 +215,7 @@ public class LuceneServer extends OtpGenServer {
 	private void del(String queryString) {
 		jlog.info("Deleting " + queryString);
 		try {
-			Query q = this.queryParser.parse(this.knownFields, queryString);
+			Query q = this.queryParser.parse(queryString);
 			this.writer.deleteDocuments(q);
 			this.writer.commit();
 			jlog.info("Several docs deleted");
@@ -261,8 +257,7 @@ public class LuceneServer extends OtpGenServer {
 			throws EndOfTableException, IOException, ParseException {
 		IndexReader reader = IndexReader.open(this.index);
 
-		Query q = this.queryParser.parse(this.knownFields,
-				pageToken.getQueryString());
+		Query q = this.queryParser.parse(pageToken.getQueryString());
 
 		IndexSearcher searcher = new IndexSearcher(reader);
 		TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
@@ -311,10 +306,12 @@ public class LuceneServer extends OtpGenServer {
 			if (prop.elementAt(1) instanceof OtpErlangString) {
 				doc.add(new Field(key, ((OtpErlangString) prop.elementAt(1))
 						.stringValue(), Field.Store.YES, Field.Index.ANALYZED));
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
 			} else if (prop.elementAt(1) instanceof OtpErlangList
 					&& ((OtpErlangList) prop.elementAt(1)).arity() == 0) {
 				doc.add(new Field(key, "", Field.Store.YES,
 						Field.Index.ANALYZED));
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
 			} else if (prop.elementAt(1) instanceof OtpErlangInt) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
@@ -326,12 +323,14 @@ public class LuceneServer extends OtpGenServer {
 							.getClass().getName());
 				}
 				doc.add(field);
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.INT);
 			} else if (prop.elementAt(1) instanceof OtpErlangLong) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
 				field.setLongValue(((OtpErlangLong) prop.elementAt(1))
 						.longValue());
 				doc.add(field);
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.LONG);
 			} else if (prop.elementAt(1) instanceof OtpErlangFloat) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
@@ -343,19 +342,19 @@ public class LuceneServer extends OtpGenServer {
 							.getClass().getName());
 				}
 				doc.add(field);
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.FLOAT);
 			} else if (prop.elementAt(1) instanceof OtpErlangDouble) {
 				NumericField field = new NumericField(key, Field.Store.YES,
 						true);
 				field.setDoubleValue(((OtpErlangDouble) prop.elementAt(1))
 						.doubleValue());
 				doc.add(field);
+				this.queryParser.putField(key, LuceneQueryParser.FieldType.DOUBLE);
 			} else {
 				throw new UnsupportedFieldTypeException(prop.elementAt(1)
 						.getClass().getName());
 			}
-			this.knownFields.put(key, prop.elementAt(1).getClass().getName());
 		}
-		jlog.info("Known fields so far: " + this.knownFields);
 		return doc;
 	}
 

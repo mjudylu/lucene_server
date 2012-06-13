@@ -1,5 +1,6 @@
 package com.tigertext.lucene;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -11,19 +12,19 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
-import com.ericsson.otp.erlang.OtpErlangDouble;
-import com.ericsson.otp.erlang.OtpErlangFloat;
-import com.ericsson.otp.erlang.OtpErlangInt;
-import com.ericsson.otp.erlang.OtpErlangLong;
-
 public class LuceneQueryParser extends QueryParser {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
 												.getName());
 
-	private Map<String, String>	knownFields;
+	public enum FieldType {
+		STRING, INT, LONG, FLOAT, DOUBLE, GEO
+	}
+
+	private Map<String, FieldType>	fields;
 
 	public LuceneQueryParser(Version version, Analyzer analyzer) {
 		super(version, "an-unused-field", analyzer);
+		this.fields = new HashMap<String, LuceneQueryParser.FieldType>();
 	}
 
 	/*
@@ -38,16 +39,16 @@ public class LuceneQueryParser extends QueryParser {
 			boolean inclusive) throws ParseException {
 		TermRangeQuery query = (TermRangeQuery) super.getRangeQuery(field,
 				part1, part2, inclusive);
-		String fieldClass = this.knownFields.get(field);
 		try {
-			if (fieldClass.equals(OtpErlangInt.class.getName())) {
+			switch (this.fields.get(field)) {
+			case INT:
 				return NumericRangeQuery.newIntRange(field,
 						(query.getLowerTerm() == null ? Integer.MIN_VALUE
 								: Integer.parseInt(query.getLowerTerm())),
 						(query.getUpperTerm() == null ? Integer.MAX_VALUE
 								: Integer.parseInt(query.getUpperTerm())),
 						query.includesLower(), query.includesUpper());
-			} else if (fieldClass.equals(OtpErlangLong.class.getName())) {
+			case LONG:
 				return NumericRangeQuery.newLongRange(
 						field,
 						(query.getLowerTerm() == null ? Long.MIN_VALUE : Long
@@ -55,7 +56,7 @@ public class LuceneQueryParser extends QueryParser {
 						(query.getUpperTerm() == null ? Long.MAX_VALUE : Long
 								.parseLong(query.getUpperTerm())), query
 								.includesLower(), query.includesUpper());
-			} else if (fieldClass.equals(OtpErlangFloat.class.getName())) {
+			case FLOAT:
 				return NumericRangeQuery.newFloatRange(
 						field,
 						(query.getLowerTerm() == null ? Float.MIN_VALUE : Float
@@ -63,14 +64,14 @@ public class LuceneQueryParser extends QueryParser {
 								.getUpperTerm() == null ? Float.MAX_VALUE
 								: Float.parseFloat(query.getUpperTerm())),
 						query.includesLower(), query.includesUpper());
-			} else if (fieldClass.equals(OtpErlangDouble.class.getName())) {
+			case DOUBLE:
 				return NumericRangeQuery.newDoubleRange(field,
 						(query.getLowerTerm() == null ? Double.MIN_VALUE
 								: Double.parseDouble(query.getLowerTerm())),
 						(query.getUpperTerm() == null ? Double.MAX_VALUE
 								: Double.parseDouble(query.getUpperTerm())),
 						query.includesLower(), query.includesUpper());
-			} else {
+			default:
 				return query;
 			}
 		} catch (NumberFormatException nfe) {
@@ -91,22 +92,20 @@ public class LuceneQueryParser extends QueryParser {
 	@Override
 	protected Query getFieldQuery(String field, String queryText, boolean quoted)
 			throws ParseException {
-		String fieldClass = this.knownFields.get(field);
-		if (fieldClass.equals(OtpErlangInt.class.getName())
-				|| fieldClass.equals(OtpErlangLong.class.getName())
-				|| fieldClass.equals(OtpErlangFloat.class.getName())
-				|| fieldClass.equals(OtpErlangDouble.class.getName())) {
+		switch (this.fields.get(field)) {
+		case INT:
+		case LONG:
+		case FLOAT:
+		case DOUBLE:
 			jlog.finer("Turning " + queryText + " into a range query for "
 					+ field);
 			return getRangeQuery(field, queryText, queryText, true);
-		} else {
+		default:
 			return super.getFieldQuery(field, queryText, quoted);
 		}
 	}
 
-	public Query parse(Map<String, String> knownFields, String queryString)
-			throws ParseException {
-		this.knownFields = knownFields;
-		return super.parse(queryString);
+	public void putField(String key, FieldType fieldType) {
+		this.fields.put(key, fieldType);
 	}
 }
