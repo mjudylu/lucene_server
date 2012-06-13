@@ -50,10 +50,10 @@ public class LuceneServer extends OtpGenServer {
 		private static final long	serialVersionUID	= 3118984031523050939L;
 	}
 
-	protected Analyzer			analyzer;
-	protected Directory			index;
-	protected IndexWriter		writer;
-	protected LuceneQueryParser	queryParser;
+	protected Analyzer				analyzer;
+	protected Directory				index;
+	protected IndexWriter			writer;
+	protected LuceneQueryParser		queryParser;
 	protected DocumentTranslator	translator;
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
@@ -76,8 +76,9 @@ public class LuceneServer extends OtpGenServer {
 		this.index = new RAMDirectory();
 		this.writer = new IndexWriter(this.index, new IndexWriterConfig(
 				Version.LUCENE_36, this.analyzer));
-		this.queryParser = new LuceneQueryParser(Version.LUCENE_36, analyzer);
-		this.translator = new DocumentTranslator(this.queryParser);
+		this.translator = new DocumentTranslator();
+		this.queryParser = new LuceneQueryParser(Version.LUCENE_36,
+				this.analyzer, this.translator);
 	}
 
 	@Override

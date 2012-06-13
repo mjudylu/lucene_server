@@ -2,7 +2,9 @@ package com.tigertext.lucene;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.document.Document;
@@ -22,12 +24,16 @@ import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
 public class DocumentTranslator {
-	private static final Logger	jlog			= Logger.getLogger(LuceneServer.class
-														.getName());
+	private static final Logger		jlog			= Logger.getLogger(LuceneServer.class
+															.getName());
 
-	private static final String	GEO_SEPARATOR	= "/";
+	private static final String		GEO_SEPARATOR	= "/";
 
-	private LuceneQueryParser	queryParser;
+	private Map<String, FieldType>	fields;
+
+	public enum FieldType {
+		STRING, INT, LONG, FLOAT, DOUBLE, GEO, ATOM
+	}
 
 	public class UnsupportedFieldTypeException extends Exception {
 		public UnsupportedFieldTypeException(
@@ -38,8 +44,8 @@ public class DocumentTranslator {
 		private static final long	serialVersionUID	= 8966657853257773634L;
 	}
 
-	public DocumentTranslator(LuceneQueryParser queryParser) {
-		this.queryParser = queryParser;
+	public DocumentTranslator() {
+		this.fields = new HashMap<String, DocumentTranslator.FieldType>();
 	}
 
 	protected OtpErlangList convert(List<Document> docs) {
@@ -62,7 +68,7 @@ public class DocumentTranslator {
 	}
 
 	private OtpErlangObject parseField(Fieldable field) {
-		switch (this.queryParser.getFieldType(field)) {
+		switch (getFieldType(field.name())) {
 		case DOUBLE:
 			return new OtpErlangDouble(Double.parseDouble(field.stringValue()));
 		case FLOAT:
@@ -147,7 +153,7 @@ public class DocumentTranslator {
 							.doubleValue());
 			doc.add(new Field(key, stringValue, Field.Store.YES,
 					Field.Index.ANALYZED));
-			this.queryParser.putField(key, LuceneQueryParser.FieldType.GEO);
+			this.fields.put(key, FieldType.GEO);
 
 		} else {
 			throw new UnsupportedFieldTypeException(value.getClass());
@@ -158,7 +164,7 @@ public class DocumentTranslator {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
 		field.setDoubleValue(value.doubleValue());
 		doc.add(field);
-		this.queryParser.putField(key, LuceneQueryParser.FieldType.DOUBLE);
+		this.fields.put(key, FieldType.DOUBLE);
 	}
 
 	public void addField(Document doc, String key, OtpErlangFloat value)
@@ -170,14 +176,14 @@ public class DocumentTranslator {
 			throw new UnsupportedFieldTypeException(value.getClass());
 		}
 		doc.add(field);
-		this.queryParser.putField(key, LuceneQueryParser.FieldType.FLOAT);
+		this.fields.put(key, FieldType.FLOAT);
 	}
 
 	public void addField(Document doc, String key, OtpErlangLong value) {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
 		field.setLongValue(value.longValue());
 		doc.add(field);
-		this.queryParser.putField(key, LuceneQueryParser.FieldType.LONG);
+		this.fields.put(key, FieldType.LONG);
 	}
 
 	public void addField(Document doc, String key, OtpErlangInt value)
@@ -186,7 +192,7 @@ public class DocumentTranslator {
 			NumericField field = new NumericField(key, Field.Store.YES, true);
 			field.setIntValue(value.intValue());
 			doc.add(field);
-			this.queryParser.putField(key, LuceneQueryParser.FieldType.INT);
+			this.fields.put(key, FieldType.INT);
 		} catch (OtpErlangRangeException e) {
 			throw new UnsupportedFieldTypeException(value.getClass());
 		}
@@ -196,7 +202,7 @@ public class DocumentTranslator {
 			throws UnsupportedFieldTypeException {
 		if (value.arity() == 0) {
 			doc.add(new Field(key, "", Field.Store.YES, Field.Index.ANALYZED));
-			this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
+			this.fields.put(key, FieldType.STRING);
 		} else {
 			throw new UnsupportedFieldTypeException(value.getClass());
 		}
@@ -205,13 +211,18 @@ public class DocumentTranslator {
 	public void addField(Document doc, String key, OtpErlangAtom value) {
 		doc.add(new Field(key, value.atomValue(), Field.Store.YES,
 				Field.Index.ANALYZED));
-		this.queryParser.putField(key, LuceneQueryParser.FieldType.ATOM);
+		this.fields.put(key, FieldType.ATOM);
 	}
 
 	public void addField(Document doc, String key, OtpErlangString value) {
 		doc.add(new Field(key, value.stringValue(), Field.Store.YES,
 				Field.Index.ANALYZED));
-		this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
+		this.fields.put(key, FieldType.STRING);
+	}
+
+	public FieldType getFieldType(String fieldName) {
+		FieldType type = this.fields.get(fieldName);
+		return type == null ? FieldType.STRING : type;
 	}
 
 }

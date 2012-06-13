@@ -1,11 +1,8 @@
 package com.tigertext.lucene;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.queryParser.ParseException;
 import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -14,18 +11,15 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
 public class LuceneQueryParser extends QueryParser {
-	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
-												.getName());
+	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
+													.getName());
 
-	public enum FieldType {
-		STRING, INT, LONG, FLOAT, DOUBLE, GEO, ATOM
-	}
+	private DocumentTranslator documentTranslator;
 
-	private Map<String, FieldType>	fields;
-
-	public LuceneQueryParser(Version version, Analyzer analyzer) {
+	public LuceneQueryParser(Version version, Analyzer analyzer,
+			DocumentTranslator documentTranslator) {
 		super(version, "an-unused-field", analyzer);
-		this.fields = new HashMap<String, LuceneQueryParser.FieldType>();
+		this.documentTranslator = documentTranslator;
 	}
 
 	/*
@@ -41,7 +35,7 @@ public class LuceneQueryParser extends QueryParser {
 		TermRangeQuery query = (TermRangeQuery) super.getRangeQuery(field,
 				part1, part2, inclusive);
 		try {
-			switch (this.fields.get(field)) {
+			switch (this.documentTranslator.getFieldType(field)) {
 			case INT:
 				return NumericRangeQuery.newIntRange(field,
 						(query.getLowerTerm() == null ? Integer.MIN_VALUE
@@ -98,7 +92,7 @@ public class LuceneQueryParser extends QueryParser {
 	protected Query getFieldQuery(String field, String queryText, boolean quoted)
 			throws ParseException {
 		try {
-			switch (this.fields.get(field)) {
+			switch (this.documentTranslator.getFieldType(field)) {
 			case INT:
 			case LONG:
 			case FLOAT:
@@ -113,19 +107,6 @@ public class LuceneQueryParser extends QueryParser {
 			// An unknown field
 			jlog.warning("Unknown field: " + field);
 			return super.getFieldQuery(field, queryText, quoted);
-		}
-	}
-
-	public void putField(String key, FieldType fieldType) {
-		this.fields.put(key, fieldType);
-	}
-
-	public FieldType getFieldType(Fieldable field) {
-		FieldType type = this.fields.get(field.name());
-		if(type != null) {
-			return type; 
-		} else {
-			return FieldType.STRING;
 		}
 	}
 }
