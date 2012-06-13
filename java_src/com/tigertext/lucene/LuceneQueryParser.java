@@ -18,7 +18,7 @@ public class LuceneQueryParser extends QueryParser {
 												.getName());
 
 	public enum FieldType {
-		STRING, INT, LONG, FLOAT, DOUBLE, GEO
+		STRING, INT, LONG, FLOAT, DOUBLE, GEO, ATOM
 	}
 
 	private Map<String, FieldType>	fields;

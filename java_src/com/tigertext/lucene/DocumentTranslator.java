@@ -20,7 +20,6 @@ import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangRangeException;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
-import com.tigertext.lucene.LuceneQueryParser.FieldType;
 
 public class DocumentTranslator {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
@@ -72,6 +71,8 @@ public class DocumentTranslator {
 			return new OtpErlangInt(Integer.parseInt(field.stringValue()));
 		case LONG:
 			return new OtpErlangLong(Long.parseLong(field.stringValue()));
+		case ATOM:
+			return new OtpErlangAtom(field.stringValue());
 		default:
 			return new OtpErlangString(field.stringValue());
 		}
@@ -170,6 +171,12 @@ public class DocumentTranslator {
 		} else {
 			throw new UnsupportedFieldTypeException(value.getClass());
 		}
+	}
+
+	public void addField(Document doc, String key, OtpErlangAtom value) {
+		doc.add(new Field(key, value.atomValue(), Field.Store.YES,
+				Field.Index.ANALYZED));
+		this.queryParser.putField(key, LuceneQueryParser.FieldType.ATOM);
 	}
 
 	public void addField(Document doc, String key, OtpErlangString value) {
