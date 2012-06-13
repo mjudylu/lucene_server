@@ -26,10 +26,12 @@ start_link() ->
 %% SUPERVISOR API
 %%-------------------------------------------------------------------
 %% @hidden
--spec init([]) -> {ok, {{one_for_one, 5, 60}, [supervisor:child_spec()]}}.
+%%NOTE: If the process dies... it can't be restarted, because all information
+%%		stored in the java process may or may not be lost.
+-spec init([]) -> {ok, {{one_for_one, 0, 1}, [supervisor:child_spec()]}}.
 init([]) ->
   {ok,
-    {_SupFlags = {one_for_one, 5, 60},
+    {_SupFlags = {one_for_one, 0, 1},
       [
         {lucene, {lucene, start_link, []}, permanent, 2000, worker, [lucene]}
       ]}}.
