@@ -87,13 +87,6 @@ init([]) ->
       throw({stop, java_missing});
     Java ->
       JavaNode = java_node(),
-      JPriv =
-        case code:priv_dir(jinterface) of
-          {error, bad_name} ->
-            lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
-            "./priv";
-          JPrivDir -> filename:absname(JPrivDir)
-        end,
       Priv =
         case code:priv_dir(lucene_server) of
           {error, bad_name} ->
@@ -108,11 +101,25 @@ init([]) ->
                                   string:join(
                                     [Priv ++ "/lucene-server.jar",
                                      Priv ++ "/lucene-core-3.6.0.jar",
-                                     JPriv ++ "/OtpErlang.jar"], ":"),
+                                     otpLib("/OtpErlang.jar")], ":"),
                                   "com.tigertext.lucene.LuceneNode",
                                   JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}
   end.
+
+%% return the absolute path to the otp erlang JAR
+otpLib(Path) ->
+    JPriv =
+      case code:priv_dir(jinterface) of
+        {error, bad_name} ->
+          lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
+          "./priv";
+        JPrivDir -> filename:absname(JPrivDir)
+      end,
+      test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
+
+test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
+test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
 
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
 handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.
