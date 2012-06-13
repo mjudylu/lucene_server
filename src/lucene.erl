@@ -29,8 +29,14 @@
 
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
 
--type doc() :: [{atom()|binary()|string(), string()},...].
--export_type([doc/0]).
+-record(geo, {lat   :: float(),
+              long  :: float()}).
+
+-type geo() :: #geo{}.
+-type field_key() :: atom()|binary()|string().
+-type field_value() :: number() | atom() | string() | geo().
+-type doc() :: [{field_key(), field_value()},...].
+-export_type([geo/0, field_key/0, field_value/0, doc/0]).
 
 %%-------------------------------------------------------------------
 %% PUBLIC API

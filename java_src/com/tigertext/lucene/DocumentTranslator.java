@@ -22,8 +22,10 @@ import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
 public class DocumentTranslator {
-	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
-												.getName());
+	private static final Logger	jlog			= Logger.getLogger(LuceneServer.class
+														.getName());
+
+	private static final String	GEO_SEPARATOR	= "/";
 
 	private LuceneQueryParser	queryParser;
 
@@ -65,14 +67,20 @@ public class DocumentTranslator {
 			return new OtpErlangDouble(Double.parseDouble(field.stringValue()));
 		case FLOAT:
 			return new OtpErlangFloat(Float.parseFloat(field.stringValue()));
-		case GEO:
-			return new OtpErlangAtom("TODO");
 		case INT:
 			return new OtpErlangInt(Integer.parseInt(field.stringValue()));
 		case LONG:
 			return new OtpErlangLong(Long.parseLong(field.stringValue()));
 		case ATOM:
 			return new OtpErlangAtom(field.stringValue());
+		case GEO:
+			String[] latLong = field.stringValue().split(GEO_SEPARATOR);
+			if (latLong.length != 2)
+				return new OtpErlangString(field.stringValue());
+			return new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("geo"),
+					new OtpErlangDouble(Double.parseDouble(latLong[0])),
+					new OtpErlangDouble(Double.parseDouble(latLong[1])) });
 		default:
 			return new OtpErlangString(field.stringValue());
 		}
@@ -95,34 +103,55 @@ public class DocumentTranslator {
 			String key = ((OtpErlangAtom) prop.elementAt(0)).atomValue();
 			OtpErlangObject value = prop.elementAt(1);
 
-			try {
-				this.getClass()
-						.getDeclaredMethod("addField", Document.class,
-								String.class, value.getClass())
-						.invoke(this, doc, key, value);
-			} catch (InvocationTargetException ite) {
-				if (ite.getTargetException() instanceof UnsupportedFieldTypeException) {
-					throw (UnsupportedFieldTypeException) ite
-							.getTargetException();
-				} else {
-					jlog.severe("Invoke problems: " + ite);
-					ite.printStackTrace();
-					throw new UnsupportedFieldTypeException(value.getClass());
-				}
-			} catch (NoSuchMethodException e) {
-				throw new UnsupportedFieldTypeException(value.getClass());
-			} catch (Exception e) {
-				jlog.severe("Invoke problems: " + e);
-				e.printStackTrace();
-				throw new UnsupportedFieldTypeException(value.getClass());
-			}
+			addField(doc, key, value);
 		}
 		return doc;
 	}
 
+	protected void addField(Document doc, String key, OtpErlangObject value)
+			throws UnsupportedFieldTypeException {
+		try {
+			this.getClass()
+					.getDeclaredMethod("addField", Document.class,
+							String.class, value.getClass())
+					.invoke(this, doc, key, value);
+		} catch (InvocationTargetException ite) {
+			if (ite.getTargetException() instanceof UnsupportedFieldTypeException) {
+				throw (UnsupportedFieldTypeException) ite.getTargetException();
+			} else {
+				jlog.severe("Invoke problems: " + ite);
+				ite.printStackTrace();
+				throw new UnsupportedFieldTypeException(value.getClass());
+			}
+		} catch (NoSuchMethodException e) {
+			throw new UnsupportedFieldTypeException(value.getClass());
+		} catch (Exception e) {
+			jlog.severe("Invoke problems: " + e);
+			e.printStackTrace();
+			throw new UnsupportedFieldTypeException(value.getClass());
+		}
+	}
+
 	public void addField(Document doc, String key, OtpErlangTuple value)
 			throws UnsupportedFieldTypeException {
-		throw new UnsupportedFieldTypeException(value.getClass());
+		if (value.arity() == 3
+				&& value.elementAt(0) instanceof OtpErlangAtom
+				&& ((OtpErlangAtom) value.elementAt(0)).atomValue().equals(
+						"geo")) {
+			addField(doc, key + "`lat", value.elementAt(1));
+			addField(doc, key + "`long", value.elementAt(2));
+			String stringValue = Double.toString(((OtpErlangDouble) value
+					.elementAt(1)).doubleValue())
+					+ GEO_SEPARATOR
+					+ Double.toString(((OtpErlangDouble) value.elementAt(2))
+							.doubleValue());
+			doc.add(new Field(key, stringValue, Field.Store.YES,
+					Field.Index.ANALYZED));
+			this.queryParser.putField(key, LuceneQueryParser.FieldType.GEO);
+
+		} else {
+			throw new UnsupportedFieldTypeException(value.getClass());
+		}
 	}
 
 	public void addField(Document doc, String key, OtpErlangDouble value) {
