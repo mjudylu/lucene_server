@@ -29,7 +29,7 @@
 
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
 
--type doc() :: [{atom(), string()},...].
+-type doc() :: [{atom()|binary()|string(), string()},...].
 -export_type([doc/0]).
 
 %%-------------------------------------------------------------------
@@ -70,7 +70,7 @@ clear() -> gen_server:cast(?LUCENE_SERVER, {clear}).
 
 %% @doc Registers a list of docs
 -spec add([doc()]) -> ok.
-add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, Docs}).
+add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, [normalize(Doc) || Doc <- Docs]}).
 
 %% @doc Removes docs matching a certain query
 -spec del(string()) -> ok.
@@ -127,7 +127,7 @@ handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
   true = erlang:monitor_node(State#state.java_node, true),
   {noreply, State};
 handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
-  _ = lager:info("Java Log:~s", [JavaLog]),
+  _ = lager:info("Java Log:\t~s", [JavaLog]),
   {noreply, State};
 handle_info(Info, State) ->
   _ = lager:warning("Unexpected info: ~p", [Info]),
@@ -155,3 +155,10 @@ make_call(Call, Timeout) ->
     {ok, Result} -> Result;
     {error, Error} -> throw(Error)
   end.
+
+normalize(Doc) ->
+  [case Key of
+    Key when is_atom(Key) -> {Key, Value};
+    Key when is_list(Key) -> {list_to_atom(Key), Value};
+    Key when is_binary(Key) -> {binary_to_atom(Key, utf8), Value}
+   end || {Key, Value} <- Doc].
