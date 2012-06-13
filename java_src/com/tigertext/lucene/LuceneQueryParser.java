@@ -11,14 +11,14 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
 public class LuceneQueryParser extends QueryParser {
-	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
-													.getName());
+	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
+												.getName());
 
-	private DocumentTranslator documentTranslator;
+	private DocumentTranslator	documentTranslator;
 
 	public LuceneQueryParser(Version version, Analyzer analyzer,
 			DocumentTranslator documentTranslator) {
-		super(version, "an-unused-field", analyzer);
+		super(version, "", analyzer);
 		this.documentTranslator = documentTranslator;
 	}
 
@@ -79,6 +79,21 @@ public class LuceneQueryParser extends QueryParser {
 			nfe.printStackTrace();
 			return query;
 		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * org.apache.lucene.queryParser.QueryParser#getFuzzyQuery(java.lang.String,
+	 * java.lang.String, float)
+	 */
+	@Override
+	protected Query getFuzzyQuery(String field, String termStr,
+			float minSimilarity) throws ParseException {
+		jlog.info("Fuzzy query " + field + ":" + termStr + " | "
+				+ minSimilarity);
+		return super.getFuzzyQuery(field, termStr, minSimilarity);
 	}
 
 	/*

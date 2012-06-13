@@ -107,14 +107,11 @@ init([]) ->
             "./priv";
           PrivDir -> filename:absname(PrivDir)
         end,
+      Classpath = string:join([JPriv ++ "/OtpErlang.jar" | filelib:wildcard(Priv ++ "/*.jar")], ":"),
       Port =
         erlang:open_port({spawn_executable, Java},
                          [{line,1000}, stderr_to_stdout,
-                          {args, ["-classpath",
-                                  string:join(
-                                    [Priv ++ "/lucene-server.jar",
-                                     Priv ++ "/lucene-core-3.6.0.jar",
-                                     JPriv ++ "/OtpErlang.jar"], ":"),
+                          {args, ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
                                   JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}

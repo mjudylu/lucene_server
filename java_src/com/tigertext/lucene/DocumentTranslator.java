@@ -11,6 +11,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.document.NumericField;
+import org.apache.lucene.spatial.geohash.GeoHashUtils;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangDouble;
@@ -23,11 +24,10 @@ import com.ericsson.otp.erlang.OtpErlangRangeException;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
+@SuppressWarnings("deprecation")
 public class DocumentTranslator {
-	private static final Logger		jlog			= Logger.getLogger(LuceneServer.class
-															.getName());
-
-	private static final String		GEO_SEPARATOR	= "/";
+	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
+													.getName());
 
 	private Map<String, FieldType>	fields;
 
@@ -80,13 +80,12 @@ public class DocumentTranslator {
 		case ATOM:
 			return new OtpErlangAtom(field.stringValue());
 		case GEO:
-			String[] latLong = field.stringValue().split(GEO_SEPARATOR);
+			double[] latLong = GeoHashUtils.decode(field.stringValue());
 			if (latLong.length != 2)
 				return new OtpErlangString(field.stringValue());
 			return new OtpErlangTuple(new OtpErlangObject[] {
-					new OtpErlangAtom("geo"),
-					new OtpErlangDouble(Double.parseDouble(latLong[0])),
-					new OtpErlangDouble(Double.parseDouble(latLong[1])) });
+					new OtpErlangAtom("geo"), new OtpErlangDouble(latLong[0]),
+					new OtpErlangDouble(latLong[1]) });
 		default:
 			return new OtpErlangString(field.stringValue());
 		}
@@ -146,11 +145,9 @@ public class DocumentTranslator {
 						"geo")) {
 			addField(doc, key + "`lat", value.elementAt(1));
 			addField(doc, key + "`long", value.elementAt(2));
-			String stringValue = Double.toString(((OtpErlangDouble) value
-					.elementAt(1)).doubleValue())
-					+ GEO_SEPARATOR
-					+ Double.toString(((OtpErlangDouble) value.elementAt(2))
-							.doubleValue());
+			String stringValue = GeoHashUtils.encode(
+					((OtpErlangDouble) value.elementAt(1)).doubleValue(),
+					((OtpErlangDouble) value.elementAt(2)).doubleValue());
 			doc.add(new Field(key, stringValue, Field.Store.YES,
 					Field.Index.ANALYZED));
 			this.fields.put(key, FieldType.GEO);
