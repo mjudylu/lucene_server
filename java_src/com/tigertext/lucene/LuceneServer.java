@@ -2,7 +2,6 @@ package com.tigertext.lucene;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -13,9 +12,6 @@ import org.apache.lucene.analysis.ReusableAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WhitespaceTokenizer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Fieldable;
-import org.apache.lucene.document.NumericField;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -33,42 +29,32 @@ import org.apache.lucene.util.Version;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangBinary;
-import com.ericsson.otp.erlang.OtpErlangDouble;
 import com.ericsson.otp.erlang.OtpErlangException;
 import com.ericsson.otp.erlang.OtpErlangExit;
-import com.ericsson.otp.erlang.OtpErlangFloat;
-import com.ericsson.otp.erlang.OtpErlangInt;
 import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangLong;
 import com.ericsson.otp.erlang.OtpErlangObject;
-import com.ericsson.otp.erlang.OtpErlangRangeException;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 import com.ericsson.otp.erlang.OtpNode;
 import com.ericsson.otp.stdlib.OtpContinueException;
 import com.ericsson.otp.stdlib.OtpGenServer;
 import com.ericsson.otp.stdlib.OtpStopException;
+import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
 
 public class LuceneServer extends OtpGenServer {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
 												.getName());
 
-	protected class UnsupportedFieldTypeException extends Exception {
-		public UnsupportedFieldTypeException(String type) {
-			super("Unsupported field type: " + type);
-		}
-
-		private static final long	serialVersionUID	= 8966657853257773634L;
-	}
-
 	protected class EndOfTableException extends Exception {
 		private static final long	serialVersionUID	= 3118984031523050939L;
 	}
 
-	protected Analyzer				analyzer;
-	protected Directory				index;
-	protected IndexWriter			writer;
-	protected LuceneQueryParser		queryParser;
+	protected Analyzer			analyzer;
+	protected Directory			index;
+	protected IndexWriter		writer;
+	protected LuceneQueryParser	queryParser;
+	protected DocumentTranslator	translator;
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
@@ -91,6 +77,7 @@ public class LuceneServer extends OtpGenServer {
 		this.writer = new IndexWriter(this.index, new IndexWriterConfig(
 				Version.LUCENE_36, this.analyzer));
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36, analyzer);
+		this.translator = new DocumentTranslator(this.queryParser);
 	}
 
 	@Override
@@ -177,8 +164,8 @@ public class LuceneServer extends OtpGenServer {
 		} else if (cmdName.equals("add")) {
 			// {add, Docs :: [[{atom(), string()}]]}
 			try {
-				add(buildDocs(((OtpErlangList) cmdTuple.elementAt(1))
-						.elements()));
+				add(this.translator.convert((OtpErlangList) cmdTuple
+						.elementAt(1)));
 			} catch (UnsupportedFieldTypeException ufte) {
 				jlog.severe(ufte.getMessage());
 				ufte.printStackTrace();
@@ -285,116 +272,22 @@ public class LuceneServer extends OtpGenServer {
 			pageToken = new LucenePageToken();
 		}
 
-		return encodeResult(docs, pageToken, topDocs.totalHits, firstHit);
-	}
-
-	private List<Document> buildDocs(OtpErlangObject[] objects)
-			throws UnsupportedFieldTypeException {
-		List<Document> docs = new ArrayList<Document>(objects.length);
-		for (OtpErlangObject object : objects) {
-			docs.add(buildDoc(((OtpErlangList) object).elements()));
-		}
-		return docs;
-	}
-
-	private Document buildDoc(OtpErlangObject[] props)
-			throws UnsupportedFieldTypeException {
-		Document doc = new Document();
-		for (OtpErlangObject object : props) {
-			OtpErlangTuple prop = (OtpErlangTuple) object;
-			String key = ((OtpErlangAtom) prop.elementAt(0)).atomValue();
-			if (prop.elementAt(1) instanceof OtpErlangString) {
-				doc.add(new Field(key, ((OtpErlangString) prop.elementAt(1))
-						.stringValue(), Field.Store.YES, Field.Index.ANALYZED));
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
-			} else if (prop.elementAt(1) instanceof OtpErlangList
-					&& ((OtpErlangList) prop.elementAt(1)).arity() == 0) {
-				doc.add(new Field(key, "", Field.Store.YES,
-						Field.Index.ANALYZED));
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.STRING);
-			} else if (prop.elementAt(1) instanceof OtpErlangInt) {
-				NumericField field = new NumericField(key, Field.Store.YES,
-						true);
-				try {
-					field.setIntValue(((OtpErlangInt) prop.elementAt(1))
-							.intValue());
-				} catch (OtpErlangRangeException e) {
-					throw new UnsupportedFieldTypeException(prop.elementAt(1)
-							.getClass().getName());
-				}
-				doc.add(field);
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.INT);
-			} else if (prop.elementAt(1) instanceof OtpErlangLong) {
-				NumericField field = new NumericField(key, Field.Store.YES,
-						true);
-				field.setLongValue(((OtpErlangLong) prop.elementAt(1))
-						.longValue());
-				doc.add(field);
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.LONG);
-			} else if (prop.elementAt(1) instanceof OtpErlangFloat) {
-				NumericField field = new NumericField(key, Field.Store.YES,
-						true);
-				try {
-					field.setFloatValue(((OtpErlangFloat) prop.elementAt(1))
-							.floatValue());
-				} catch (OtpErlangRangeException e) {
-					throw new UnsupportedFieldTypeException(prop.elementAt(1)
-							.getClass().getName());
-				}
-				doc.add(field);
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.FLOAT);
-			} else if (prop.elementAt(1) instanceof OtpErlangDouble) {
-				NumericField field = new NumericField(key, Field.Store.YES,
-						true);
-				field.setDoubleValue(((OtpErlangDouble) prop.elementAt(1))
-						.doubleValue());
-				doc.add(field);
-				this.queryParser.putField(key, LuceneQueryParser.FieldType.DOUBLE);
-			} else {
-				throw new UnsupportedFieldTypeException(prop.elementAt(1)
-						.getClass().getName());
-			}
-		}
-		return doc;
-	}
-
-	private OtpErlangObject encodeResult(List<Document> origValues,
-			Serializable nextPage, int totalHits, int firstHit)
-			throws IOException {
-		jlog.entering(this.getClass().getName(), "encodeResult");
-
-		// Values as a list of lists of tuples
-		OtpErlangObject[] values = new OtpErlangObject[origValues.size()];
-		for (int i = 0; i < origValues.size(); i++) {
-			OtpErlangObject[] props = new OtpErlangObject[origValues.get(i)
-					.getFields().size()];
-			int j = 0;
-			for (Fieldable field : origValues.get(i).getFields()) {
-				OtpErlangAtom keyAsAtom = new OtpErlangAtom(field.name());
-				OtpErlangString valueAsString = new OtpErlangString(
-						field.stringValue());
-				props[j] = new OtpErlangTuple(new OtpErlangObject[] {
-						keyAsAtom, valueAsString });
-				j++;
-			}
-			values[i] = new OtpErlangList(props);
-		}
-		OtpErlangList valuesAsList = new OtpErlangList(values);
+		OtpErlangList valuesAsList = this.translator.convert(docs);
 
 		// Metadata as a proplist
 		OtpErlangObject[] metadata = new OtpErlangObject[3];
-		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("next_page"), new OtpErlangBinary(nextPage) });
+		metadata[0] = new OtpErlangTuple(
+				new OtpErlangObject[] { new OtpErlangAtom("next_page"),
+						new OtpErlangBinary(pageToken) });
 		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
-				new OtpErlangAtom("total_hits"), new OtpErlangLong(totalHits) });
+				new OtpErlangAtom("total_hits"),
+				new OtpErlangLong(topDocs.totalHits) });
 		metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
 		OtpErlangList metadataAsList = new OtpErlangList(metadata);
 
 		// Final result
-		OtpErlangTuple result = new OtpErlangTuple(new OtpErlangObject[] {
-				valuesAsList, metadataAsList });
-		jlog.exiting(this.getClass().getName(), "encodeResult", result);
-		return result;
+		return new OtpErlangTuple(new OtpErlangObject[] { valuesAsList,
+				metadataAsList });
 	}
 }

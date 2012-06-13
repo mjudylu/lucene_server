@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.queryParser.ParseException;
 import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.search.NumericRangeQuery;
@@ -74,6 +75,10 @@ public class LuceneQueryParser extends QueryParser {
 			default:
 				return query;
 			}
+		} catch (NullPointerException npe) {
+			// An unknown field
+			jlog.warning("Unknown field: " + field);
+			return query;
 		} catch (NumberFormatException nfe) {
 			jlog.finer("Couldn't parse range: " + field + ":[" + part1 + " TO "
 					+ part2 + "]");
@@ -92,20 +97,35 @@ public class LuceneQueryParser extends QueryParser {
 	@Override
 	protected Query getFieldQuery(String field, String queryText, boolean quoted)
 			throws ParseException {
-		switch (this.fields.get(field)) {
-		case INT:
-		case LONG:
-		case FLOAT:
-		case DOUBLE:
-			jlog.finer("Turning " + queryText + " into a range query for "
-					+ field);
-			return getRangeQuery(field, queryText, queryText, true);
-		default:
+		try {
+			switch (this.fields.get(field)) {
+			case INT:
+			case LONG:
+			case FLOAT:
+			case DOUBLE:
+				jlog.finer("Turning " + queryText + " into a range query for "
+						+ field);
+				return getRangeQuery(field, queryText, queryText, true);
+			default:
+				return super.getFieldQuery(field, queryText, quoted);
+			}
+		} catch (NullPointerException npe) {
+			// An unknown field
+			jlog.warning("Unknown field: " + field);
 			return super.getFieldQuery(field, queryText, quoted);
 		}
 	}
 
 	public void putField(String key, FieldType fieldType) {
 		this.fields.put(key, fieldType);
+	}
+
+	public FieldType getFieldType(Fieldable field) {
+		FieldType type = this.fields.get(field.name());
+		if(type != null) {
+			return type; 
+		} else {
+			return FieldType.STRING;
+		}
 	}
 }
