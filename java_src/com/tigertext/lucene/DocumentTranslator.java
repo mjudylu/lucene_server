@@ -12,6 +12,10 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.document.NumericField;
 import org.apache.lucene.spatial.geohash.GeoHashUtils;
+import org.apache.lucene.spatial.tier.projections.CartesianTierPlotter;
+import org.apache.lucene.spatial.tier.projections.IProjector;
+import org.apache.lucene.spatial.tier.projections.SinusoidalProjector;
+import org.apache.lucene.util.NumericUtils;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangDouble;
@@ -26,8 +30,11 @@ import com.ericsson.otp.erlang.OtpErlangTuple;
 
 @SuppressWarnings("deprecation")
 public class DocumentTranslator {
-	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
-													.getName());
+	private static final Logger		jlog		= Logger.getLogger(LuceneServer.class
+														.getName());
+
+	public static final int			MAX_TIER	= 20;
+	public static final int			MIN_TIER	= 4;
 
 	private Map<String, FieldType>	fields;
 
@@ -52,8 +59,9 @@ public class DocumentTranslator {
 		OtpErlangObject[] values = new OtpErlangObject[docs.size()];
 		for (int i = 0; i < docs.size(); i++) {
 			List<Fieldable> fields = docs.get(i).getFields();
-			for(int k = fields.size() -1; k >= 0; k--) {
-				if(fields.get(k).name().contains("`")) fields.remove(k);
+			for (int k = fields.size() - 1; k >= 0; k--) {
+				if (fields.get(k).name().contains("`"))
+					fields.remove(k);
 			}
 			OtpErlangObject[] props = new OtpErlangObject[fields.size()];
 			int j = 0;
@@ -147,10 +155,19 @@ public class DocumentTranslator {
 				&& ((OtpErlangAtom) value.elementAt(0)).atomValue().equals(
 						"geo")) {
 			addField(doc, key + "`lat", value.elementAt(1));
-			addField(doc, key + "`long", value.elementAt(2));
-			String stringValue = GeoHashUtils.encode(
-					((OtpErlangDouble) value.elementAt(1)).doubleValue(),
-					((OtpErlangDouble) value.elementAt(2)).doubleValue());
+			addField(doc, key + "`lng", value.elementAt(2));
+
+			double lat = ((OtpErlangDouble) value.elementAt(1)).doubleValue();
+			double lng = ((OtpErlangDouble) value.elementAt(2)).doubleValue();
+			String stringValue = GeoHashUtils.encode(lat, lng);
+
+			IProjector projector = new SinusoidalProjector();
+			for (int tier = MIN_TIER; tier <= MAX_TIER; tier++) {
+				CartesianTierPlotter ctp = new CartesianTierPlotter(tier,
+						projector, key + "`tier_");
+				addField(doc, key + "`tier_" + tier, ctp.getTierBoxId(lat, lng));
+			}
+
 			doc.add(new Field(key, stringValue, Field.Store.YES,
 					Field.Index.ANALYZED));
 			this.fields.put(key, FieldType.GEO);
@@ -160,11 +177,16 @@ public class DocumentTranslator {
 		}
 	}
 
-	public void addField(Document doc, String key, OtpErlangDouble value) {
+	private void addField(Document doc, String key, double value) {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
-		field.setDoubleValue(value.doubleValue());
-		doc.add(field);
+		doc.add(field.setDoubleValue(value));
+		//doc.add(new Field(key, NumericUtils.doubleToPrefixCoded(value),
+			//	Field.Store.YES, Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.DOUBLE);
+	}
+
+	public void addField(Document doc, String key, OtpErlangDouble value) {
+		addField(doc, key, value.doubleValue());
 	}
 
 	public void addField(Document doc, String key, OtpErlangFloat value)
@@ -214,10 +236,13 @@ public class DocumentTranslator {
 		this.fields.put(key, FieldType.ATOM);
 	}
 
-	public void addField(Document doc, String key, OtpErlangString value) {
-		doc.add(new Field(key, value.stringValue(), Field.Store.YES,
-				Field.Index.ANALYZED));
+	private void addField(Document doc, String key, String value) {
+		doc.add(new Field(key, value, Field.Store.YES, Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.STRING);
+	}
+
+	public void addField(Document doc, String key, OtpErlangString value) {
+		addField(doc, key, value.stringValue());
 	}
 
 	public FieldType getFieldType(String fieldName) {

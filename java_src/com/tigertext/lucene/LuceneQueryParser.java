@@ -4,21 +4,22 @@ import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.queryParser.ParseException;
-import org.apache.lucene.queryParser.QueryParser;
+import org.apache.lucene.queryParser.ext.ExtendableQueryParser;
+import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.NumericRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
-public class LuceneQueryParser extends QueryParser {
+public class LuceneQueryParser extends ExtendableQueryParser {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
 												.getName());
 
 	private DocumentTranslator	documentTranslator;
 
 	public LuceneQueryParser(Version version, Analyzer analyzer,
-			DocumentTranslator documentTranslator) {
-		super(version, "", analyzer);
+			DocumentTranslator documentTranslator, Extensions ext) {
+		super(version, "", analyzer, ext);
 		this.documentTranslator = documentTranslator;
 	}
 

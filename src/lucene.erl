@@ -30,7 +30,7 @@
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
 
 -record(geo, {lat   :: float(),
-              long  :: float()}).
+              lng   :: float()}).
 
 -type geo() :: #geo{}.
 -type field_key() :: atom()|binary()|string().
@@ -160,8 +160,15 @@ make_call(Call, Timeout) ->
   end.
 
 normalize(Doc) ->
-  [case Key of
-    Key when is_atom(Key) -> {Key, Value};
-    Key when is_list(Key) -> {list_to_atom(Key), Value};
-    Key when is_binary(Key) -> {binary_to_atom(Key, utf8), Value}
-   end || {Key, Value} <- Doc].
+  [{case Key of
+      Key when is_atom(Key) -> Key;
+      Key when is_list(Key) -> list_to_atom(Key);
+      Key when is_binary(Key) -> binary_to_atom(Key, utf8)
+    end, validate(Value)} || {Key, Value} <- Doc].
+
+validate(#geo{lat = Lat}) when -90.0 > Lat; Lat > 90.0 ->
+  throw({invalid_latitude, Lat});
+validate(#geo{lng = Lng}) when -180.0 > Lng; Lng > 180.0 ->
+  throw({invalid_longitude, Lng});
+validate(Value) ->
+  Value.

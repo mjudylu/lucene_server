@@ -17,6 +17,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
+import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -41,6 +42,7 @@ import com.ericsson.otp.stdlib.OtpContinueException;
 import com.ericsson.otp.stdlib.OtpGenServer;
 import com.ericsson.otp.stdlib.OtpStopException;
 import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
+import com.tigertext.lucene.ext.NearParserExtension;
 
 public class LuceneServer extends OtpGenServer {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
@@ -77,8 +79,10 @@ public class LuceneServer extends OtpGenServer {
 		this.writer = new IndexWriter(this.index, new IndexWriterConfig(
 				Version.LUCENE_36, this.analyzer));
 		this.translator = new DocumentTranslator();
+		Extensions ext = new Extensions('.');
+		ext.add("near", new NearParserExtension());
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36,
-				this.analyzer, this.translator);
+				this.analyzer, this.translator, ext);
 	}
 
 	@Override
