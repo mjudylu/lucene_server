@@ -15,7 +15,6 @@ import org.apache.lucene.spatial.geohash.GeoHashUtils;
 import org.apache.lucene.spatial.tier.projections.CartesianTierPlotter;
 import org.apache.lucene.spatial.tier.projections.IProjector;
 import org.apache.lucene.spatial.tier.projections.SinusoidalProjector;
-import org.apache.lucene.util.NumericUtils;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangDouble;
