@@ -24,19 +24,15 @@
                 java_node :: atom()}).
 -opaque state() :: #state{}.
 
+-include("lucene.hrl").
+
 -type page_token() :: binary().
--export_type([page_token/0]).
-
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
-
--record(geo, {lat   :: float(),
-              lng   :: float()}).
-
 -type geo() :: #geo{}.
 -type field_key() :: atom()|binary()|string().
 -type field_value() :: number() | atom() | string() | geo().
 -type doc() :: [{field_key(), field_value()},...].
--export_type([geo/0, field_key/0, field_value/0, doc/0]).
+-export_type([geo/0, field_key/0, field_value/0, doc/0, metadata/0, page_token/0]).
 
 %%-------------------------------------------------------------------
 %% PUBLIC API
