@@ -51,16 +51,17 @@ public class DocumentTranslator {
 	protected OtpErlangList convert(List<Document> docs) {
 		OtpErlangObject[] values = new OtpErlangObject[docs.size()];
 		for (int i = 0; i < docs.size(); i++) {
-			OtpErlangObject[] props = new OtpErlangObject[docs.get(i)
-					.getFields().size()];
+			List<Fieldable> fields = docs.get(i).getFields();
+			for(int k = fields.size() -1; k >= 0; k--) {
+				if(fields.get(k).name().contains("`")) fields.remove(k);
+			}
+			OtpErlangObject[] props = new OtpErlangObject[fields.size()];
 			int j = 0;
-			for (Fieldable field : docs.get(i).getFields()) {
-				if (!field.name().contains("`")) {
-					OtpErlangAtom key = new OtpErlangAtom(field.name());
-					OtpErlangObject value = parseField(field);
-					props[j] = new OtpErlangTuple(new OtpErlangObject[] { key,
-							value });
-				}
+			for (Fieldable field : fields) {
+				OtpErlangAtom key = new OtpErlangAtom(field.name());
+				OtpErlangObject value = parseField(field);
+				props[j] = new OtpErlangTuple(new OtpErlangObject[] { key,
+						value });
 				j++;
 			}
 			values[i] = new OtpErlangList(props);
