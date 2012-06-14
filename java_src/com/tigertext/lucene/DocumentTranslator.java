@@ -55,10 +55,12 @@ public class DocumentTranslator {
 					.getFields().size()];
 			int j = 0;
 			for (Fieldable field : docs.get(i).getFields()) {
-				OtpErlangAtom key = new OtpErlangAtom(field.name());
-				OtpErlangObject value = parseField(field);
-				props[j] = new OtpErlangTuple(new OtpErlangObject[] { key,
-						value });
+				if (!field.name().contains("`")) {
+					OtpErlangAtom key = new OtpErlangAtom(field.name());
+					OtpErlangObject value = parseField(field);
+					props[j] = new OtpErlangTuple(new OtpErlangObject[] { key,
+							value });
+				}
 				j++;
 			}
 			values[i] = new OtpErlangList(props);
