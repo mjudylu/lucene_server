@@ -179,8 +179,6 @@ public class DocumentTranslator {
 	private void addField(Document doc, String key, double value) {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
 		doc.add(field.setDoubleValue(value));
-		//doc.add(new Field(key, NumericUtils.doubleToPrefixCoded(value),
-			//	Field.Store.YES, Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.DOUBLE);
 	}
 
@@ -222,7 +220,7 @@ public class DocumentTranslator {
 	public void addField(Document doc, String key, OtpErlangList value)
 			throws UnsupportedFieldTypeException {
 		if (value.arity() == 0) {
-			doc.add(new Field(key, "", Field.Store.YES, Field.Index.ANALYZED));
+			doc.add(new Field(key, "", Field.Store.YES, Field.Index.NOT_ANALYZED));
 			this.fields.put(key, FieldType.STRING);
 		} else {
 			throw new UnsupportedFieldTypeException(value.getClass());
@@ -236,7 +234,7 @@ public class DocumentTranslator {
 	}
 
 	private void addField(Document doc, String key, String value) {
-		doc.add(new Field(key, value, Field.Store.YES, Field.Index.NOT_ANALYZED));
+		doc.add(new Field(key, value, Field.Store.YES, Field.Index.ANALYZED));
 		this.fields.put(key, FieldType.STRING);
 	}
 

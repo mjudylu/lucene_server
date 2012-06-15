@@ -17,6 +17,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
+import org.apache.lucene.queryParser.QueryParser;
 import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -55,7 +56,7 @@ public class LuceneServer extends OtpGenServer {
 	protected Analyzer				analyzer;
 	protected Directory				index;
 	protected IndexWriter			writer;
-	protected LuceneQueryParser		queryParser;
+	protected QueryParser			queryParser;
 	protected DocumentTranslator	translator;
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
