@@ -29,7 +29,7 @@ import com.ericsson.otp.erlang.OtpErlangTuple;
 
 @SuppressWarnings("deprecation")
 public class DocumentTranslator {
-	private static final Logger		jlog		= Logger.getLogger(LuceneServer.class
+	private static final Logger		jlog		= Logger.getLogger(DocumentTranslator.class
 														.getName());
 
 	public static final int			MAX_TIER	= 20;
@@ -160,6 +160,9 @@ public class DocumentTranslator {
 			double lng = ((OtpErlangDouble) value.elementAt(2)).doubleValue();
 			String stringValue = GeoHashUtils.encode(lat, lng);
 
+			addField(doc, key + "`latr", Math.toRadians(lat));
+			addField(doc, key + "`lngr", Math.toRadians(lng));
+
 			IProjector projector = new SinusoidalProjector();
 			for (int tier = MIN_TIER; tier <= MAX_TIER; tier++) {
 				CartesianTierPlotter ctp = new CartesianTierPlotter(tier,
@@ -220,7 +223,8 @@ public class DocumentTranslator {
 	public void addField(Document doc, String key, OtpErlangList value)
 			throws UnsupportedFieldTypeException {
 		if (value.arity() == 0) {
-			doc.add(new Field(key, "", Field.Store.YES, Field.Index.NOT_ANALYZED));
+			doc.add(new Field(key, "", Field.Store.YES,
+					Field.Index.NOT_ANALYZED));
 			this.fields.put(key, FieldType.STRING);
 		} else {
 			throw new UnsupportedFieldTypeException(value.getClass());

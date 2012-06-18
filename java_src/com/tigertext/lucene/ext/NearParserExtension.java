@@ -8,7 +8,11 @@ import org.apache.lucene.queryParser.ext.ParserExtension;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.function.CustomScoreQuery;
+import org.apache.lucene.search.function.ValueSource;
+import org.apache.lucene.search.function.ValueSourceQuery;
 import org.apache.lucene.spatial.tier.CartesianPolyFilterBuilder;
+import org.apache.lucene.spatial.tier.DistanceFilter;
 import org.apache.lucene.spatial.tier.LatLongDistanceFilter;
 
 import com.tigertext.lucene.DocumentTranslator;
@@ -33,7 +37,7 @@ public class NearParserExtension extends ParserExtension {
 				double miles = Double.parseDouble(data[2]);
 				String tierPrefix = key + "`tier_";
 
-				jlog.info("lat:" + lat + ", lng:" + lng + ", miles:" + miles
+				jlog.finer("lat:" + lat + ", lng:" + lng + ", miles:" + miles
 						+ ", prefix: " + tierPrefix);
 
 				CartesianPolyFilterBuilder cpf = new CartesianPolyFilterBuilder(
@@ -41,9 +45,13 @@ public class NearParserExtension extends ParserExtension {
 						DocumentTranslator.MAX_TIER);
 
 				Filter cartesianFilter = cpf.getBoundingArea(lat, lng, miles);
-				Filter filter = new LatLongDistanceFilter(cartesianFilter, lat,
+				DistanceFilter filter = new LatLongDistanceFilter(cartesianFilter, lat,
 						lng, miles, key + "`lat", key + "`lng");
-				return new ConstantScoreQuery(filter);
+
+				ValueSource valSrc = new DistanceValueSource(filter);
+
+				return new CustomScoreQuery(new ConstantScoreQuery(filter),
+						new ValueSourceQuery(valSrc));
 			} catch (IllegalArgumentException iae) {
 				throw new ParseException(iae.getMessage());
 			}
