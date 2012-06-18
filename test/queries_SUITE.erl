@@ -1,7 +1,7 @@
 %% @hidden
 -module(queries_SUITE).
 
--export([all/0, distance/1]).
+-export([all/0, distance/1, hsin/2]).
 
 -include("lucene.hrl").
 
@@ -54,13 +54,14 @@ is_sorted([X,Y|Rest]) when X =< Y -> is_sorted([Y|Rest]);
 is_sorted([X,Y|_]) ->
   _ = lager:info("~p > ~p: ~p", [X, Y, X - Y]), false.
 
+-spec hsin(lucene:geo(), lucene:geo()) -> float().
 hsin(P1, P2) ->
   DLat = math:pi() * (P2#geo.lat - P1#geo.lat) / 180,
   DLng = math:pi() * (P2#geo.lng - P1#geo.lng) / 180,
   Lat1 = math:pi() * P1#geo.lat / 180,
   Lat2 = math:pi() * P2#geo.lat / 180,
   A = math:sin(DLat/2) * math:sin(DLat/2) + math:sin(DLng/2) * math:sin(DLng/2) * math:cos(Lat1) * math:cos(Lat2),
-  erlang:round(2 * math:atan2(math:sqrt(A), math:sqrt(1-A)) * 3959 * 10000).
+  erlang:round(2 * math:atan2(math:sqrt(A), math:sqrt(1-A)) * 3959 * 10000) / 10000.
 
 random_longitude() -> (random:uniform(10000000) - 16500000) / 100000.
 random_latitude() -> (random:uniform(3000000) + 2100000) / 100000.
