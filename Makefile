@@ -20,7 +20,9 @@ xref: all
 	rebar skip_deps=true xref
 
 shell: erl
-	${ERLANG} -boot start_sasl
+	if [ -n "${NODE}" ]; then ${ERLANG} -name ${NODE}@`hostname` -boot start_sasl; \
+	else ${ERLANG} -name lucene_server@`hostname` -boot start_sasl; \
+	fi
 
 run: erl
 	if [ -n "${NODE}" ]; then ${ERLANG} -name ${NODE}@`hostname` -boot start_sasl -s lucene_server; \

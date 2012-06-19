@@ -29,8 +29,14 @@
 
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
 
--type doc() :: [{atom(), string()},...].
--export_type([doc/0]).
+-record(geo, {lat   :: float(),
+              long  :: float()}).
+
+-type geo() :: #geo{}.
+-type field_key() :: atom()|binary()|string().
+-type field_value() :: number() | atom() | string() | geo().
+-type doc() :: [{field_key(), field_value()},...].
+-export_type([geo/0, field_key/0, field_value/0, doc/0]).
 
 %%-------------------------------------------------------------------
 %% PUBLIC API
@@ -49,7 +55,7 @@ match(Query, PageSize) -> match(Query, PageSize, ?CALL_TIMEOUT).
 
 %% @doc Runs a query against the lucene server
 -spec match(string(), pos_integer(), infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
-match(Query, PageSize, Timeout) -> gen_server:call(?LUCENE_SERVER, {match, Query, PageSize}, Timeout).
+match(Query, PageSize, Timeout) -> make_call({match, Query, PageSize}, Timeout).
 
 %% @equiv continue(PageToken, PageSize, infinity)
 -spec continue(page_token(), pos_integer()) -> {[string()], metadata()} | '$end_of_table'.
@@ -57,7 +63,7 @@ continue(PageToken, PageSize) -> continue(PageToken, PageSize, ?CALL_TIMEOUT).
 
 %% @doc Continues a Query where it was left
 -spec continue(page_token(), pos_integer(), infinity | pos_integer()) -> {[string()], metadata()} | '$end_of_table'.
-continue(PageToken, PageSize, Timeout) -> gen_server:call(?LUCENE_SERVER, {continue, PageToken, PageSize}, Timeout).
+continue(PageToken, PageSize, Timeout) -> make_call({continue, PageToken, PageSize}, Timeout).
 
 %% @doc Stops the java process
 -spec stop() -> ok.
@@ -70,7 +76,7 @@ clear() -> gen_server:cast(?LUCENE_SERVER, {clear}).
 
 %% @doc Registers a list of docs
 -spec add([doc()]) -> ok.
-add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, Docs}).
+add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, [normalize(Doc) || Doc <- Docs]}).
 
 %% @doc Removes docs matching a certain query
 -spec del(string()) -> ok.
@@ -101,14 +107,14 @@ init([]) ->
                                   string:join(
                                     [Priv ++ "/lucene-server.jar",
                                      Priv ++ "/lucene-core-3.6.0.jar",
-                                     otpLib("/OtpErlang.jar")], ":"),
+                                     otp_lib("/OtpErlang.jar")], ":"),
                                   "com.tigertext.lucene.LuceneNode",
                                   JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}
   end.
 
 %% return the absolute path to the otp erlang JAR
-otpLib(Path) ->
+otp_lib(Path) ->
     JPriv =
       case code:priv_dir(jinterface) of
         {error, bad_name} ->
@@ -134,7 +140,7 @@ handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
   true = erlang:monitor_node(State#state.java_node, true),
   {noreply, State};
 handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
-  _ = lager:info("Java Log:~n\t~s", [JavaLog]),
+  _ = lager:info("Java Log:\t~s", [JavaLog]),
   {noreply, State};
 handle_info(Info, State) ->
   _ = lager:warning("Unexpected info: ~p", [Info]),
@@ -156,3 +162,16 @@ java_node() ->
     [Name, Server] -> list_to_atom(Name ++ "_java@" ++ Server);
     _Node -> throw({bad_node_name, node()})
   end.
+
+make_call(Call, Timeout) ->
+  case gen_server:call(?LUCENE_SERVER, Call, Timeout) of
+    {ok, Result} -> Result;
+    {error, Error} -> throw(Error)
+  end.
+
+normalize(Doc) ->
+  [case Key of
+    Key when is_atom(Key) -> {Key, Value};
+    Key when is_list(Key) -> {list_to_atom(Key), Value};
+    Key when is_binary(Key) -> {binary_to_atom(Key, utf8), Value}
+   end || {Key, Value} <- Doc].
