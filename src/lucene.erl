@@ -24,19 +24,15 @@
                 java_node :: atom()}).
 -opaque state() :: #state{}.
 
+-include("lucene.hrl").
+
 -type page_token() :: binary().
--export_type([page_token/0]).
-
 -type metadata() :: [{page_token, page_token()} | {total_hits, non_neg_integer()} | {first_hit, non_neg_integer()}].
-
--record(geo, {lat   :: float(),
-              long  :: float()}).
-
 -type geo() :: #geo{}.
 -type field_key() :: atom()|binary()|string().
 -type field_value() :: number() | atom() | string() | geo().
 -type doc() :: [{field_key(), field_value()},...].
--export_type([geo/0, field_key/0, field_value/0, doc/0]).
+-export_type([geo/0, field_key/0, field_value/0, doc/0, metadata/0, page_token/0]).
 
 %%-------------------------------------------------------------------
 %% PUBLIC API
@@ -55,7 +51,7 @@ match(Query, PageSize) -> match(Query, PageSize, ?CALL_TIMEOUT).
 
 %% @doc Runs a query against the lucene server
 -spec match(string(), pos_integer(), infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
-match(Query, PageSize, Timeout) -> make_call({match, Query, PageSize}, Timeout).
+match(Query, PageSize, Timeout) -> make_call({match, normalize_unicode(Query), PageSize}, Timeout).
 
 %% @equiv continue(PageToken, PageSize, infinity)
 -spec continue(page_token(), pos_integer()) -> {[string()], metadata()} | '$end_of_table'.
@@ -80,7 +76,7 @@ add(Docs) -> gen_server:cast(?LUCENE_SERVER, {add, [normalize(Doc) || Doc <- Doc
 
 %% @doc Removes docs matching a certain query
 -spec del(string()) -> ok.
-del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, Query}).
+del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, normalize_unicode(Query)}).
 
 %%-------------------------------------------------------------------
 %% GEN_SERVER API
@@ -100,14 +96,11 @@ init([]) ->
             "./priv";
           PrivDir -> filename:absname(PrivDir)
         end,
+      Classpath = string:join([otp_lib("/OtpErlang.jar") | filelib:wildcard(Priv ++ "/*.jar")], ":"),
       Port =
         erlang:open_port({spawn_executable, Java},
                          [{line,1000}, stderr_to_stdout,
-                          {args, ["-classpath",
-                                  string:join(
-                                    [Priv ++ "/lucene-server.jar",
-                                     Priv ++ "/lucene-core-3.6.0.jar",
-                                     otp_lib("/OtpErlang.jar")], ":"),
+                          {args, ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
                                   JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}
@@ -169,9 +162,24 @@ make_call(Call, Timeout) ->
     {error, Error} -> throw(Error)
   end.
 
+normalize_unicode(String) ->
+  case lists:dropwhile(fun(Char) -> Char =< 255 end, String) of
+    [] -> String;
+    _ -> binary_to_list(unicode:characters_to_binary(String))
+  end.
+
 normalize(Doc) ->
-  [case Key of
-    Key when is_atom(Key) -> {Key, Value};
-    Key when is_list(Key) -> {list_to_atom(Key), Value};
-    Key when is_binary(Key) -> {binary_to_atom(Key, utf8), Value}
-   end || {Key, Value} <- Doc].
+  [{case Key of
+      Key when is_atom(Key) -> Key;
+      Key when is_list(Key) -> list_to_atom(normalize_unicode(Key));
+      Key when is_binary(Key) -> binary_to_atom(Key, utf8)
+    end, validate(Value)} || {Key, Value} <- Doc].
+
+validate(#geo{lat = Lat}) when -90.0 > Lat; Lat > 90.0 ->
+  throw({invalid_latitude, Lat});
+validate(#geo{lng = Lng}) when -180.0 > Lng; Lng > 180.0 ->
+  throw({invalid_longitude, Lng});
+validate(Value) when is_list(Value) ->
+  normalize_unicode(Value);
+validate(Value) ->
+  Value.
