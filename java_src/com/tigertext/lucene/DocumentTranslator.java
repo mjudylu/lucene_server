@@ -11,6 +11,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.document.NumericField;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.spatial.geohash.GeoHashUtils;
 import org.apache.lucene.spatial.tier.projections.CartesianTierPlotter;
 import org.apache.lucene.spatial.tier.projections.IProjector;
@@ -54,7 +55,7 @@ public class DocumentTranslator {
 		this.fields = new HashMap<String, DocumentTranslator.FieldType>();
 	}
 
-	protected OtpErlangList convert(List<Document> docs) {
+	protected OtpErlangList convert(List<Document> docs, ScoreDoc[] hits) {
 		OtpErlangObject[] values = new OtpErlangObject[docs.size()];
 		for (int i = 0; i < docs.size(); i++) {
 			List<Fieldable> fields = docs.get(i).getFields();
@@ -62,7 +63,7 @@ public class DocumentTranslator {
 				if (fields.get(k).name().contains("`"))
 					fields.remove(k);
 			}
-			OtpErlangObject[] props = new OtpErlangObject[fields.size()];
+			OtpErlangObject[] props = new OtpErlangObject[fields.size() + 1];
 			int j = 0;
 			for (Fieldable field : fields) {
 				OtpErlangAtom key = new OtpErlangAtom(field.name());
@@ -71,6 +72,9 @@ public class DocumentTranslator {
 						value });
 				j++;
 			}
+			props[j] = new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("__score__"),
+					new OtpErlangFloat(hits[i].score) });
 			values[i] = new OtpErlangList(props);
 		}
 		OtpErlangList valuesAsList = new OtpErlangList(values);

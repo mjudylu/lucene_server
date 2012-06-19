@@ -278,7 +278,7 @@ public class LuceneServer extends OtpGenServer {
 			pageToken = new LucenePageToken();
 		}
 
-		OtpErlangList valuesAsList = this.translator.convert(docs);
+		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
 		// Metadata as a proplist
 		OtpErlangObject[] metadata = new OtpErlangObject[3];
