@@ -106,7 +106,7 @@ init([]) ->
       {ok, #state{java_port = Port, java_node = JavaNode}}
   end.
 
-%% @doc return the absolute path to the otp erlang JAR
+%% return the absolute path to the otp erlang JAR
 otp_lib(Path) ->
     JPriv =
       case code:priv_dir(jinterface) of
