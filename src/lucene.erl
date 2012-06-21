@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @author Fernando Benavides <elbrujohalcon@inaka.net>
-%%% @doc Lucene Interface
+%%% @doc Lucene Interface.
+%%% Use it to add/del/query documents
 %%% @end
 %%%-------------------------------------------------------------------
 -module(lucene).
@@ -65,8 +66,8 @@ continue(PageToken, PageSize, Timeout) -> make_call({continue, PageToken, PageSi
 -spec stop() -> ok.
 stop() -> gen_server:cast(?LUCENE_SERVER, {stop}).
 
-%% @doc Clears the whole index
-%%      USE WITH CAUTION
+%% @doc Clears the whole index.
+%%      <b>USE IT WITH CAUTION</b>
 -spec clear() -> ok.
 clear() -> gen_server:cast(?LUCENE_SERVER, {clear}).
 
@@ -81,6 +82,7 @@ del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, normalize_unicode(Query)}).
 %%-------------------------------------------------------------------
 %% GEN_SERVER API
 %%-------------------------------------------------------------------
+%% @private
 -spec init([]) -> {ok, state()}.
 init([]) ->
   case os:find_executable("java") of
@@ -106,23 +108,11 @@ init([]) ->
       {ok, #state{java_port = Port, java_node = JavaNode}}
   end.
 
-%% return the absolute path to the otp erlang JAR
-otp_lib(Path) ->
-    JPriv =
-      case code:priv_dir(jinterface) of
-        {error, bad_name} ->
-          lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
-          "./priv";
-        JPrivDir -> filename:absname(JPrivDir)
-      end,
-      test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
-
-test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
-test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
-
+%% @private
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
 handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.
 
+%% @private
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.
 handle_info({nodedown, JavaNode}, State = #state{java_node = JavaNode}) ->
   lager:error("Java node is down!"),
@@ -139,17 +129,35 @@ handle_info(Info, State) ->
   _ = lager:warning("Unexpected info: ~p", [Info]),
   {noreply, State}.
 
+%% @private
 -spec terminate(_, state()) -> true.
 terminate(_Reason, State) -> erlang:port_close(State#state.java_port).
 
+%% @private
 -spec handle_cast(term(), state()) -> {noreply, state()}.
 handle_cast(_Msg, State) -> {noreply, State}.
+%% @private
 -spec code_change(term(), state(), term()) -> {ok, state()}.
 code_change(_OldVersion, State, _Extra) -> {ok, State}.
 
 %%-------------------------------------------------------------------
 %% PRIVATE
 %%-------------------------------------------------------------------
+%% @private
+%% @doc returns the absolute path to the otp erlang JAR
+otp_lib(Path) ->
+    JPriv =
+      case code:priv_dir(jinterface) of
+        {error, bad_name} ->
+          lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
+          "./priv";
+        JPrivDir -> filename:absname(JPrivDir)
+      end,
+      test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
+
+test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
+test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
+
 java_node() ->
   case string:tokens(atom_to_list(node()), "@") of
     [Name, Server] -> list_to_atom(Name ++ "_java@" ++ Server);
