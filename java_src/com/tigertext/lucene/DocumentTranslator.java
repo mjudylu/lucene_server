@@ -73,7 +73,7 @@ public class DocumentTranslator {
 				j++;
 			}
 			props[j] = new OtpErlangTuple(new OtpErlangObject[] {
-					new OtpErlangAtom("__score__"),
+					new OtpErlangAtom("`score"),
 					new OtpErlangFloat(hits[i].score) });
 			values[i] = new OtpErlangList(props);
 		}
