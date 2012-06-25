@@ -1,0 +1,67 @@
+** this is the overview.doc file for the application 'lucene_server' **
+@author Fernando Benavides <elbrujohalcon@inaka.net>
+@version 1.0
+@title Lucene Server
+@doc
+
+<b>Lucene Server</b> is an <em>Erlang</em> application that let's you manage and query documents using an <b>in-memory</b> <a href="http://lucene.apache.org">Lucene</a> backend
+
+== Usage ==
+To start the application just run <code>lucene_server:start().</code>
+
+== Adding/Deleting documents ==
+To add documents use: <code>lucene:add(Docs).</code> where <code>Docs :: [lucene:doc()]</code>
+Each document is a <code>proplist</code> where the keys can be atoms, strings or binaries and the values can be numbers, atoms, strings or <code>lucene:geo()</code>.
+To delete documents use: <code>lucene:del(Query).</code> where <code>Query</code> is written respecting the <a href="http://lucene.apache.org/core/3_6_0/queryparsersyntax.html">Lucene Query Syntax</a>.
+
+== Querying ==
+To find documents according to a query use: <code>lucene:match(Query, PageSize).</code> or <code>lucene:match(Query, PageSize, Timeout).</code> where <code>Query</code> is written respecting the <a href="http://lucene.apache.org/core/3_6_0/queryparsersyntax.html">Lucene Query Syntax</a> and <code>PageSize</code> is the number of results per page you expect.
+If no <code>Timeout</code> is specified, it defaults to 5000.
+Both functions may return:
+<ul>
+<li>the atom <code>'$end_of_table'</code> if there're no results matching the query.</li>
+<li>the atom <code>timeout</code> if it took more than <code>Timeout</code> milliseconds to find the desired docs</li>
+<li>the first page of results together with metadata as described below</li>
+</ul>
+
+=== Results ===
+A results page looks like <code>{Docs::[lucene:doc()], Data::lucene:metadata()}</code> where:
+<ul>
+<li>
+<code>Docs</code> is a list of no more than <code>PageSize</code> documents that match the <code>Query</code>
+</li>
+<li>
+<code>Data</code> is a <code>proplist</code> that include the following fields:
+
+<ul>
+<li>
+<code>page_token</code>: The token used to retrieve the following page (see below)</li>
+<li>
+<code>total_hits</code>: How many documents match the query across all pages</li>
+<li>
+<code>first_hit</code>: Which is the position of the first returned doc in the whole set of docs that match the query (e.g. if <code>PageSize == 5</code>, for the first page <code>first_hit == 1</code>; for the page #2, <code>first_hit == 6</code>; etc.)</li>
+</ul>
+</li>
+</ul>
+
+=== Paging ===
+To get the following page use: <code>lucene:continue(PageToken, PageSize).</code> or <code>lucene:continue(PageToken, PageSize, Timeout).</code> where <code>PageToken</code> comes from the metadata of the previous page and the rest of the parameters and results have the same types, format and meaning as in <code>lucene:match/2</code> or <code>lucene:match/3</code> functions.
+
+== Special Data Types ==
+Besides what Lucene already offers, <em>Lucene Server</em> provides support for indexing and querying some extra data types:
+
+=== Atoms ===
+Atoms are treated as strings: You may add them as values in a document and query them using standard <em>Lucene Query Syntax</em> for strings
+
+=== Numbers ===
+<em>Lucene Server</em> lets you store integers and floats and then use them in range queries (i.e. <code>&lt;Field&gt;:[&lt;Min&gt; TO &lt;Max&gt;]</code>) properly, respecting the field's data type instead of treating them as strings as Lucene does by default.
+
+=== Geo ===
+<em>Lucene Server</em> provides support for managing and querying geo-spatial coordinates (i.e. latitude and longitude pairs).
+
+<ul>
+<li>To construct a <code>lucene:geo()</code> object, use: <code>lucene_utils:geo(Lat, Lng)</code> where <code>Lat</code> and <code>Lng</code> are floating point numbers</li>
+<li>You can then use it as a value on a <code>lucene:doc()</code>
+</li>
+<li>To find documents near a certain point, include the following term in your query: <code>&lt;Field&gt;.near:&lt;Lat&gt;,&lt;Lng&gt;,&lt;Miles&gt;</code>. That query will filter documents within a <code>&lt;Miles&gt;</code> radio of <code>&lt;Lat&gt;,&lt;Lng&gt;</code> and also will rank results according to that distances (with closer docs ranking higher).</li>
+</ul>
