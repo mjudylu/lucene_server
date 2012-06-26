@@ -35,3 +35,6 @@ test: erl
 	echo "Killing: " `ps aux | grep "LuceneNode" | grep -v "grep" | cut -c 14-20`
 	kill -9 `ps aux | grep "LuceneNode" | grep -v "grep" | cut -c 14-20`
 	open log/ct/index.html
+
+doc: erl
+	rebar skip_deps=true doc
