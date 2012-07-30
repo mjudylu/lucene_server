@@ -22,7 +22,10 @@ import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
@@ -101,10 +104,18 @@ public class LuceneServer extends OtpGenServer {
 			String queryString = ((OtpErlangString) cmdTuple.elementAt(1))
 					.stringValue();
 			int pageSize = ((OtpErlangLong) cmdTuple.elementAt(2)).intValue();
+			OtpErlangObject[] sortFieldNames = ((OtpErlangList) cmdTuple
+					.elementAt(3)).elements();
+			SortField[] sortFields = new SortField[sortFieldNames.length];
+			for (int i = 0; i < sortFields.length; i++) {
+				sortFields[i] = this.translator
+						.createSortField((OtpErlangAtom) sortFieldNames[i]);
+			}
 			try {
 				return new OtpErlangTuple(new OtpErlangObject[] {
 						new OtpErlangAtom("ok"),
-						match(new LucenePageToken(queryString), pageSize) });
+						match(new LucenePageToken(queryString, sortFields),
+								pageSize) });
 			} catch (EndOfTableException eote) {
 				return new OtpErlangTuple(new OtpErlangObject[] {
 						new OtpErlangAtom("ok"),
@@ -253,13 +264,26 @@ public class LuceneServer extends OtpGenServer {
 		Query q = this.queryParser.parse(pageToken.getQueryString());
 
 		IndexSearcher searcher = new IndexSearcher(reader);
-		TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
-				.create(pageSize, true) : TopScoreDocCollector.create(pageSize,
-				pageToken.getScoreDoc(), true);
-		searcher.search(q, collector);
-		TopDocs topDocs = collector.topDocs();
-		ScoreDoc[] hits = topDocs.scoreDocs;
+		TopDocs topDocs;
 
+		if (pageToken.getSortFields().length == 0) {
+			TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
+					.create(pageSize, true) : TopScoreDocCollector.create(
+					pageSize, pageToken.getScoreDoc(), true);
+			searcher.search(q, collector);
+			topDocs = collector.topDocs();
+		} else {
+			Sort sort = new Sort(pageToken.getSortFields());
+			TopFieldCollector collector = TopFieldCollector.create(sort,
+					pageToken.getNextFirstHit() + pageSize - 1, false, false,
+					false, false);
+			searcher.search(q, collector);
+			topDocs = collector.topDocs(pageToken.getNextFirstHit() - 1);
+		}
+
+		ScoreDoc[] hits = topDocs.scoreDocs;
+		// jlog.info("Sort: " + sort + "; topDocs: " + topDocs + "; hits: + " +
+		// hits);
 		int firstHit = 0;
 		if (hits.length > 0) {
 			firstHit = pageToken.getNextFirstHit();

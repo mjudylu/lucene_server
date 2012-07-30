@@ -12,6 +12,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.document.NumericField;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.spatial.geohash.GeoHashUtils;
 import org.apache.lucene.spatial.tier.projections.CartesianTierPlotter;
 import org.apache.lucene.spatial.tier.projections.IProjector;
@@ -74,7 +75,8 @@ public class DocumentTranslator {
 			}
 			props[j] = new OtpErlangTuple(new OtpErlangObject[] {
 					new OtpErlangAtom("`score"),
-					new OtpErlangFloat(hits[i].score) });
+					Float.isNaN(hits[i].score) ? new OtpErlangAtom("undefined")
+							: new OtpErlangFloat(hits[i].score) });
 			values[i] = new OtpErlangList(props);
 		}
 		OtpErlangList valuesAsList = new OtpErlangList(values);
@@ -102,6 +104,22 @@ public class DocumentTranslator {
 					new OtpErlangDouble(latLong[1]) });
 		default:
 			return new OtpErlangString(field.stringValue());
+		}
+	}
+
+	public SortField createSortField(OtpErlangAtom otpFieldName) {
+		String fieldName = otpFieldName.atomValue();
+		switch (this.getFieldType(fieldName)) {
+		case DOUBLE:
+			return new SortField(fieldName, SortField.DOUBLE);
+		case FLOAT:
+			return new SortField(fieldName, SortField.FLOAT);
+		case INT:
+			return new SortField(fieldName, SortField.INT);
+		case LONG:
+			return new SortField(fieldName, SortField.LONG);
+		default:
+			return new SortField(fieldName, SortField.STRING_VAL);
 		}
 	}
 
@@ -254,5 +272,4 @@ public class DocumentTranslator {
 		FieldType type = this.fields.get(fieldName);
 		return type == null ? FieldType.STRING : type;
 	}
-
 }

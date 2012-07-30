@@ -19,7 +19,7 @@
 
 -export([process/0]).
 -export([add/1, del/1, clear/0, stop/0]).
--export([match/2, match/3, continue/2, continue/3]).
+-export([match/2, match/3, match/4, continue/2, continue/3]).
 
 -record(state, {java_port :: port(),
                 java_node :: atom()}).
@@ -46,13 +46,17 @@ start_link() -> gen_server:start_link(?MODULE, [], []).
 -spec process() -> pid().
 process() -> gen_server:call(?LUCENE_SERVER, {pid}, ?CALL_TIMEOUT).
 
-%% @equiv match(Query, PageSize, infinity)
+%% @equiv match(Query, PageSize, [])
 -spec match(string(), pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
-match(Query, PageSize) -> match(Query, PageSize, ?CALL_TIMEOUT).
+match(Query, PageSize) -> match(Query, PageSize, []).
+
+%% @equiv match(Query, PageSize, SortFields, infinity)
+-spec match(string(), pos_integer(), [atom()]) -> {[doc()], metadata()} | '$end_of_table'.
+match(Query, PageSize, SortFields) -> match(Query, PageSize, SortFields, ?CALL_TIMEOUT).
 
 %% @doc Runs a query against the lucene server
--spec match(string(), pos_integer(), infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
-match(Query, PageSize, Timeout) -> make_call({match, normalize_unicode(Query), PageSize}, Timeout).
+-spec match(string(), pos_integer(), [atom()], infinity | pos_integer()) -> {[doc()], metadata()} | '$end_of_table'.
+match(Query, PageSize, SortFields, Timeout) -> make_call({match, normalize_unicode(Query), PageSize, SortFields}, Timeout).
 
 %% @equiv continue(PageToken, PageSize, infinity)
 -spec continue(page_token(), pos_integer()) -> {[string()], metadata()} | '$end_of_table'.
