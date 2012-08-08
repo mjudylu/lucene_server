@@ -129,14 +129,8 @@ handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
 handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
   _ = lager:info("Java Log:\t~s", [JavaLog]),
   {noreply, State};
-handle_info({Port, {data, {neol, JavaLog}}}, State = #state{java_port = Port}) ->
+handle_info({Port, {data, {noeol, JavaLog}}}, State = #state{java_port = Port}) ->
   _ = lager:info("Java Log:\t~s...", [JavaLog]),
-  {noreply, State};
-handle_info({OtherPort, {data, {eol, JavaLog}}}, State) ->
-  _ = lager:warning("Java Log [OTHER PORT]:\t~s", [JavaLog]),
-  {noreply, State};
-handle_info({OtherPort, {data, {neol, JavaLog}}}, State) ->
-  _ = lager:warning("Java Log [OTHER PORT]:\t~s...", [JavaLog]),
   {noreply, State};
 handle_info(Info, State) ->
   _ = lager:warning("Unexpected info: ~p", [Info]),
