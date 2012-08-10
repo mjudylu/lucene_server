@@ -119,7 +119,7 @@ public class DocumentTranslator {
 		case LONG:
 			return new SortField(fieldName, SortField.LONG);
 		default:
-			return new SortField(fieldName, SortField.STRING_VAL);
+			return new SortField(fieldName + "`sort", SortField.STRING_VAL);
 		}
 	}
 
@@ -194,6 +194,8 @@ public class DocumentTranslator {
 
 			doc.add(new Field(key, stringValue, Field.Store.YES,
 					Field.Index.ANALYZED));
+			doc.add(new Field(key + "`sort", stringValue, Field.Store.NO,
+					Field.Index.NOT_ANALYZED));
 			this.fields.put(key, FieldType.GEO);
 
 		} else {
@@ -256,11 +258,15 @@ public class DocumentTranslator {
 	public void addField(Document doc, String key, OtpErlangAtom value) {
 		doc.add(new Field(key, value.atomValue(), Field.Store.YES,
 				Field.Index.ANALYZED));
+		doc.add(new Field(key + "`sort", value.atomValue(), Field.Store.NO,
+				Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.ATOM);
 	}
 
 	private void addField(Document doc, String key, String value) {
 		doc.add(new Field(key, value, Field.Store.YES, Field.Index.ANALYZED));
+		doc.add(new Field(key + "`sort", value, Field.Store.NO,
+				Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.STRING);
 	}
 
