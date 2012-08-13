@@ -16,11 +16,11 @@ import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangDouble;
 import com.ericsson.otp.erlang.OtpErlangFloat;
 import com.ericsson.otp.erlang.OtpErlangInt;
+import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangLong;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
-import com.tigertext.lucene.DocumentTranslator;
 import com.tigertext.lucene.DocumentTranslator.FieldType;
 
 /**
@@ -33,8 +33,8 @@ public class ErlangFilter extends Filter {
 																.getName());
 
 	private static final long		serialVersionUID	= 892972394357766013L;
-	private final String			mod;
-	private final String			fun;
+	private final OtpErlangAtom		mod;
+	private final OtpErlangAtom		fun;
 	private final String			fieldName;
 	private Map<Integer, Double>	scores;
 	private int						nextDocBase;
@@ -55,8 +55,8 @@ public class ErlangFilter extends Filter {
 	 */
 	public ErlangFilter(String mod, String fun, String fieldName,
 			FieldType fieldType) {
-		this.mod = mod;
-		this.fun = fun;
+		this.mod = new OtpErlangAtom(mod);
+		this.fun = new OtpErlangAtom(fun);
 		this.fieldName = fieldName;
 		this.fieldType = fieldType;
 
@@ -104,6 +104,9 @@ public class ErlangFilter extends Filter {
 				jlog.info("matching " + mod + ":" + fun + "(docs[" + docid
 						+ "][" + fieldName + "] = " + docValues[docid] + ")");
 
+				// OtpErlangObject result = ErlangRPC.call(
+				// "lucene_server@inaki.local", mod, fun,
+				// new OtpErlangList(docValues[docid]));
 				OtpErlangObject result = new OtpErlangDouble(1.5);
 
 				if (result instanceof OtpErlangDouble) {
