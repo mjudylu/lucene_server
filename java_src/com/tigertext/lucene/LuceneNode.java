@@ -6,9 +6,17 @@ import java.util.logging.Logger;
 import com.ericsson.otp.erlang.OtpNode;
 import com.ericsson.otp.stdlib.OtpGenServer;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * Main node for the Lucene Server
+ */
 public class LuceneNode {
 	private static final Logger jlog = Logger.getLogger(LuceneNode.class.getName());
 
+	/**
+	 * Start up function
+	 * @param args Command line arguments: [name] [cookie]
+	 */
 	public static void main(String[] args) {
 		String nodeName = args.length >= 1 ? args[0] : "lucene@localhost";
 		OtpNode node;

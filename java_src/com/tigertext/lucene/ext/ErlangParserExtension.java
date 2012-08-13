@@ -12,6 +12,8 @@ import org.apache.lucene.search.function.CustomScoreQuery;
 import org.apache.lucene.search.function.ValueSource;
 import org.apache.lucene.search.function.ValueSourceQuery;
 
+import com.tigertext.lucene.DocumentTranslator;
+
 /**
  * @author Fernando Benavides <elbrujohalcon@inaka.net> Extension to run
  *         ".erlang" queries. These queries should be in the form
@@ -22,6 +24,18 @@ import org.apache.lucene.search.function.ValueSourceQuery;
 public class ErlangParserExtension extends ParserExtension {
 	private static final Logger	jlog	= Logger.getLogger(ErlangParserExtension.class
 												.getName());
+	private DocumentTranslator	translator;
+
+	/**
+	 * Creates a new parser extension
+	 * 
+	 * @param translator
+	 *            Used to determine the type of fields
+	 */
+	public ErlangParserExtension(DocumentTranslator translator) {
+		super();
+		this.translator = translator;
+	}
 
 	@Override
 	public Query parse(ExtensionQuery extQuery) throws ParseException {
@@ -35,7 +49,8 @@ public class ErlangParserExtension extends ParserExtension {
 			jlog.info("erlang query using " + key + " and " + mod + ":" + fun
 					+ "/1");
 
-			Filter filter = new ErlangFilter(mod, fun, key);
+			Filter filter = new ErlangFilter(mod, fun, key,
+					this.translator.getFieldType(key));
 
 			ValueSource valSrc = new ErlangValueSource((ErlangFilter) filter);
 

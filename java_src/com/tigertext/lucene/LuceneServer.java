@@ -86,7 +86,7 @@ public class LuceneServer extends OtpGenServer {
 		this.translator = new DocumentTranslator();
 		Extensions ext = new Extensions('.');
 		ext.add("near", new NearParserExtension());
-		ext.add("erlang", new ErlangParserExtension());
+		ext.add("erlang", new ErlangParserExtension(this.translator));
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36,
 				this.analyzer, this.translator, ext);
 	}
