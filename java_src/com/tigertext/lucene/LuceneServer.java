@@ -46,6 +46,7 @@ import com.ericsson.otp.stdlib.OtpContinueException;
 import com.ericsson.otp.stdlib.OtpGenServer;
 import com.ericsson.otp.stdlib.OtpStopException;
 import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
+import com.tigertext.lucene.ext.ErlangParserExtension;
 import com.tigertext.lucene.ext.NearParserExtension;
 
 public class LuceneServer extends OtpGenServer {
@@ -85,6 +86,7 @@ public class LuceneServer extends OtpGenServer {
 		this.translator = new DocumentTranslator();
 		Extensions ext = new Extensions('.');
 		ext.add("near", new NearParserExtension());
+		ext.add("erlang", new ErlangParserExtension());
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36,
 				this.analyzer, this.translator, ext);
 	}

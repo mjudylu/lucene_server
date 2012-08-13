@@ -18,6 +18,10 @@ import org.apache.lucene.spatial.tier.LatLongDistanceFilter;
 import com.tigertext.lucene.DocumentTranslator;
 import com.tigertext.lucene.LuceneServer;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * Extension to run ".near" queries
+ */
 @SuppressWarnings("deprecation")
 public class NearParserExtension extends ParserExtension {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class

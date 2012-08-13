@@ -118,9 +118,9 @@ handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_requ
 
 %% @private
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.
-handle_info({nodedown, JavaNode}, State = #state{java_node = JavaNode}) ->
-  lager:error("Java node is down!"),
-  {stop, nodedown, State};
+%handle_info({nodedown, JavaNode}, State = #state{java_node = JavaNode}) ->
+%  lager:error("Java node is down!"),
+%  {stop, nodedown, State};
 handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
   _ = lager:info("Java node started"),
   true = link(process()),

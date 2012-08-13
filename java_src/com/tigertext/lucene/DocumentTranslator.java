@@ -258,8 +258,8 @@ public class DocumentTranslator {
 	public void addField(Document doc, String key, OtpErlangAtom value) {
 		doc.add(new Field(key, value.atomValue(), Field.Store.YES,
 				Field.Index.ANALYZED));
-		doc.add(new Field(key + "`sort", value.atomValue().toLowerCase(), Field.Store.NO,
-				Field.Index.NOT_ANALYZED));
+		doc.add(new Field(key + "`sort", value.atomValue().toLowerCase(),
+				Field.Store.NO, Field.Index.NOT_ANALYZED));
 		this.fields.put(key, FieldType.ATOM);
 	}
 
