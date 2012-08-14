@@ -9,7 +9,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.FieldCache;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredDocIdSet;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
@@ -66,6 +65,9 @@ public class ErlangFilter extends Filter {
 
 	@Override
 	public DocIdSet getDocIdSet(IndexReader reader) throws IOException {
+		final int docBase = this.nextDocBase;
+		this.nextDocBase += reader.maxDoc();
+
 		final OtpErlangObject[] docValues;
 
 		switch (this.fieldType) {
@@ -92,32 +94,30 @@ public class ErlangFilter extends Filter {
 			break;
 		}
 
-		final int docBase = this.nextDocBase;
-		this.nextDocBase += reader.maxDoc();
+		OtpErlangObject[] rs = new OtpErlangObject[docValues.length];
+		for (int i = 0; i < docValues.length; i += 2) {
+			rs[i] = docValues[i];
+			if ((i + 1) < docValues.length) {
+				rs[i + 1] = new OtpErlangAtom(false);
+			}
+		}
+		OtpErlangList results = new OtpErlangList(rs);
 
 		final FixedBitSet bits = new FixedBitSet(reader.maxDoc());
-		bits.flip(0, reader.maxDoc());
 
-		return new FilteredDocIdSet(bits) {
-			@Override
-			protected boolean match(int docid) throws IOException {
-				jlog.info("matching " + mod + ":" + fun + "(docs[" + docid
-						+ "][" + fieldName + "] = " + docValues[docid] + ")");
-
-				// OtpErlangObject result = ErlangRPC.call(
-				// "lucene_server@inaki.local", mod, fun,
-				// new OtpErlangList(docValues[docid]));
-				OtpErlangObject result = new OtpErlangDouble(1.5);
-
-				if (result instanceof OtpErlangDouble) {
-					scores.put(docid + docBase,
-							((OtpErlangDouble) result).doubleValue());
-					return true;
-				} else {
-					return false;
-				}
+		for (int docid = 0; docid < docValues.length; docid++) {
+			OtpErlangObject result = results.elementAt(docid);
+			if (result instanceof OtpErlangDouble) {
+				scores.put(docid + docBase,
+						((OtpErlangDouble) result).doubleValue());
+				bits.set(docid);
+			} else {
+				bits.clear(docid);
 			}
-		};
+		}
+
+		jlog.info("Bits: " + bits.getBits());
+		return bits;
 	}
 
 	private OtpErlangObject[] getGeos(IndexReader reader) throws IOException {
