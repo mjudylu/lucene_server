@@ -3,7 +3,6 @@ package com.tigertext.lucene;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-import com.ericsson.otp.erlang.OtpConnection;
 import com.ericsson.otp.erlang.OtpNode;
 import com.ericsson.otp.stdlib.OtpGenServer;
 
@@ -34,17 +33,15 @@ public class LuceneNode {
 	public static void main(String[] args) {
 		String peerName = args.length >= 1 ? args[0]
 				: "lucene_server@localhost";
-		String nodeName = args.length >= 1 ? args[0]
+		String nodeName = args.length >= 2 ? args[1]
 				: "lucene_server_java@localhost";
 		try {
-			NODE = args.length >= 2 ? new OtpNode(nodeName, args[1])
+			NODE = args.length >= 3 ? new OtpNode(nodeName, args[2])
 					: new OtpNode(nodeName);
 			PEER = peerName;
 			final OtpGenServer server = new LuceneServer(NODE);
-			final OtpGenServer rpc = new RpcServer(NODE);
-			jlog.info("Java Lucene Node Started at: " + nodeName);
+			jlog.info("Java Lucene Node Started at: " + nodeName + "\nConnected to: " + PEER);
 			forever(server);
-			forever(rpc);
 			System.out.println("READY");
 		} catch (IOException e1) {
 			jlog.severe("Couldn't create node: " + e1);

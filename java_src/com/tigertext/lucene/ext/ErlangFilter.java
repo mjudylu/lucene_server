@@ -12,7 +12,10 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
+import com.ericsson.otp.erlang.OtpErlangDecodeException;
 import com.ericsson.otp.erlang.OtpErlangDouble;
+import com.ericsson.otp.erlang.OtpErlangException;
+import com.ericsson.otp.erlang.OtpErlangExit;
 import com.ericsson.otp.erlang.OtpErlangFloat;
 import com.ericsson.otp.erlang.OtpErlangInt;
 import com.ericsson.otp.erlang.OtpErlangList;
@@ -20,7 +23,9 @@ import com.ericsson.otp.erlang.OtpErlangLong;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
+import com.ericsson.otp.stdlib.OtpGenServer;
 import com.tigertext.lucene.DocumentTranslator.FieldType;
+import com.tigertext.lucene.LuceneNode;
 
 /**
  * @author Fernando Benavides <elbrujohalcon@inaka.net> Erlang filter: filters
@@ -94,26 +99,46 @@ public class ErlangFilter extends Filter {
 			break;
 		}
 
-		OtpErlangObject[] rs = new OtpErlangObject[docValues.length];
-		for (int i = 0; i < docValues.length; i += 2) {
-			rs[i] = docValues[i];
-			if ((i + 1) < docValues.length) {
-				rs[i + 1] = new OtpErlangAtom(false);
-			}
-		}
-		OtpErlangList results = new OtpErlangList(rs);
-
 		final FixedBitSet bits = new FixedBitSet(reader.maxDoc());
 
-		for (int docid = 0; docid < docValues.length; docid++) {
-			OtpErlangObject result = results.elementAt(docid);
-			if (result instanceof OtpErlangDouble) {
-				scores.put(docid + docBase,
-						((OtpErlangDouble) result).doubleValue());
-				bits.set(docid);
+		// {Mod, Fun, [Values]}
+		OtpErlangTuple call = new OtpErlangTuple(new OtpErlangObject[] {
+				this.mod, this.fun, new OtpErlangList(docValues) });
+		try {
+			OtpErlangObject response = OtpGenServer.call(LuceneNode.NODE,
+					"lucene", LuceneNode.PEER, call);
+
+			if (response == null) {
+				jlog.warning("The rpc call " + call
+						+ " timed out. No results will be returned");
+			} else if (response instanceof OtpErlangList) {
+				OtpErlangList results = (OtpErlangList) response;
+				for (int docid = 0; docid < docValues.length; docid++) {
+					OtpErlangObject result = results.elementAt(docid);
+					if (result instanceof OtpErlangDouble) {
+						scores.put(docid + docBase,
+								((OtpErlangDouble) result).doubleValue());
+						bits.set(docid);
+					} else {
+						bits.clear(docid);
+					}
+				}
 			} else {
-				bits.clear(docid);
+				jlog.severe("The rpc call " + call + " failed: " + response
+						+ ". No results will be returned");
 			}
+		} catch (OtpErlangExit e) {
+			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+					+ ". No results will be returned");
+			e.printStackTrace();
+		} catch (OtpErlangDecodeException e) {
+			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+					+ ". No results will be returned");
+			e.printStackTrace();
+		} catch (OtpErlangException e) {
+			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+					+ ". No results will be returned");
+			e.printStackTrace();
 		}
 
 		jlog.info("Bits: " + bits.getBits());
