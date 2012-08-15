@@ -17,9 +17,13 @@ import com.tigertext.lucene.DocumentTranslator;
 /**
  * @author Fernando Benavides <elbrujohalcon@inaka.net> Extension to run
  *         ".erlang" queries. These queries should be in the form
- *         Field.erlang:Mod:Fun where -spec Mod:Fun(string()) -> false |
- *         float(). If Mod:Fun(Value) returns false, the document doesn't match
- *         Otherwise the result is the score
+ *         Field.erlang:Mod:Fun:Args where -spec Mod:Fun(Args, string()) ->
+ *         false | float(). If Mod:Fun(Args…, Value) returns false, the document
+ *         doesn't match Otherwise the result is the score. Args will be parsed
+ *         on the Erlang node using… {ok, A, _} = erl_scan:string(Args++".").
+ *         {ok, B} = erl_parse:parse_exprs(A). {value, Arguments, _} =
+ *         erl_eval:exprs(B, []). …So the final call will be erlang:apply(Mod,
+ *         Fun, Arguments ++ [Value]).
  */
 public class ErlangParserExtension extends ParserExtension {
 	private static final Logger	jlog	= Logger.getLogger(ErlangParserExtension.class
@@ -41,15 +45,28 @@ public class ErlangParserExtension extends ParserExtension {
 	public Query parse(ExtensionQuery extQuery) throws ParseException {
 		String key = extQuery.getField();
 		String[] modFun = extQuery.getRawQueryString().split(":");
-		if (modFun.length != 2) {
+		if (modFun.length < 2) {
 			throw new ParseException(
-					"erlang queries expect values in <mod>:<fun> format");
+					"erlang queries expect values in <mod>:<fun> or <mod>:<fun>:<args> format");
 		} else {
-			String mod = modFun[0], fun = modFun[1];
-			jlog.info("erlang query using " + key + " and " + mod + ":" + fun
-					+ "/1");
+			String mod = modFun[0], fun = modFun[1], args;
+			if (modFun.length == 2) {
+				args = "[]";
+			} else if (modFun.length == 3) {
+				args = modFun[2];
+			} else {
+				args = "";
+				String colon = "";
+				for (int i = 2; i < modFun.length; i++) {
+					args += colon + modFun[i];
+					colon = ":";
+				}
+			}
 
-			Filter filter = new ErlangFilter(mod, fun, key,
+			jlog.info("erlang query using " + key + " and " + mod + ":" + fun
+					+ "(" + args + "…");
+
+			Filter filter = new ErlangFilter(mod, fun, args, key,
 					this.translator.getFieldType(key));
 
 			ValueSource valSrc = new ErlangValueSource((ErlangFilter) filter);

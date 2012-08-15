@@ -115,12 +115,18 @@ init([]) ->
 
 %% @private
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
-handle_call({Mod, Fun, Values}, _From, State) ->
-  lager:info("Running ~p:~p(~p).", [Mod, Fun, Values]),
+handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
+  lager:info("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
   Reply =
-    try Mod:Fun(Values)
+    try
+      {ok, Scanned, _} = erl_scan:string(Args++"."),
+      {ok, Parsed} = erl_parse:parse_exprs(Scanned),
+      {value, Arguments, _} = erl_eval:exprs(Parsed, []),
+      erlang:apply(Mod,Fun, Arguments ++ [Values])
     catch
-      _:Error -> {error, Error}
+      _:Error ->
+        lager:error("Bad RPC call (~p): ~p~n\t~p", [Call, Error, erlang:get_stacktrace()]),
+        {error, Error}
     end,
   {reply, Reply, State};
 handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.

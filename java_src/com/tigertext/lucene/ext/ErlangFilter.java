@@ -45,22 +45,29 @@ public class ErlangFilter extends Filter {
 
 	private FieldType				fieldType;
 
+	private OtpErlangString			arg;
+
 	/**
 	 * Default constructor
 	 * 
 	 * @param mod
 	 *            Erlang module
 	 * @param fun
-	 *            Erlang function (it must have arity = 1)
+	 *            Erlang function
+	 * @param arg
+	 *            First argument(s) on the call to mod:fun. They're written like
+	 *            io_lib:format(É). They'll be parsed on the Erlang side before
+	 *            calling mod:fun
 	 * @param fieldName
 	 *            Lucene field to consider
 	 * @param fieldType
 	 *            Type of the values to find in fieldName
 	 */
-	public ErlangFilter(String mod, String fun, String fieldName,
+	public ErlangFilter(String mod, String fun, String arg, String fieldName,
 			FieldType fieldType) {
 		this.mod = new OtpErlangAtom(mod);
 		this.fun = new OtpErlangAtom(fun);
+		this.arg = new OtpErlangString(arg);
 		this.fieldName = fieldName;
 		this.fieldType = fieldType;
 
@@ -103,7 +110,7 @@ public class ErlangFilter extends Filter {
 
 		// {Mod, Fun, [Values]}
 		OtpErlangTuple call = new OtpErlangTuple(new OtpErlangObject[] {
-				this.mod, this.fun, new OtpErlangList(docValues) });
+				this.mod, this.fun, this.arg, new OtpErlangList(docValues) });
 		try {
 			OtpErlangObject response = OtpGenServer.call(LuceneNode.NODE,
 					"lucene", LuceneNode.PEER, call);
