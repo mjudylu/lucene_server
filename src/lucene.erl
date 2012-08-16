@@ -116,7 +116,7 @@ init([]) ->
 %% @private
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
 handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
-  lager:info("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
+  lager:debug("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
   Reply =
     try
       {ok, Scanned, _} = erl_scan:string(Args++"."),
