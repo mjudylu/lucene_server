@@ -2,7 +2,6 @@ package com.tigertext.lucene;
 
 import java.io.Serializable;
 
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SortField;
 
 /**
@@ -12,7 +11,6 @@ public final class LucenePageToken implements Serializable {
 	private static final long	serialVersionUID	= -5595064630916761399L;
 
 	private boolean				empty;
-	private ScoreDoc			scoreDoc;
 	private int					nextFirstHit;
 	private String				queryString;
 
@@ -36,9 +34,11 @@ public final class LucenePageToken implements Serializable {
 	 */
 	public LucenePageToken(String queryString, SortField[] sortFields) {
 		this.empty = false;
-		this.scoreDoc = null;
 		this.queryString = queryString;
-		this.sortFields = sortFields;
+		this.sortFields = new SortField[sortFields.length + 1];
+		this.sortFields[0] = SortField.FIELD_SCORE;
+		for (int i = 0; i < sortFields.length; i++)
+			this.sortFields[i+1] = sortFields[i];
 		this.nextFirstHit = 1;
 	}
 
@@ -47,21 +47,6 @@ public final class LucenePageToken implements Serializable {
 	 */
 	public boolean isEmpty() {
 		return empty;
-	}
-
-	/**
-	 * @return The score doc to use by the TopScoreDocCollector
-	 */
-	public ScoreDoc getScoreDoc() {
-		return scoreDoc;
-	}
-
-	/**
-	 * @param scoreDoc
-	 *            Sets the score doc to use by the TopScoreDocCollector
-	 */
-	public void setScoreDoc(ScoreDoc scoreDoc) {
-		this.scoreDoc = scoreDoc;
 	}
 
 	/**
@@ -85,7 +70,7 @@ public final class LucenePageToken implements Serializable {
 			return "<emtpy token>";
 		} else {
 			return "<token for " + this.queryString + ". Doc: "
-					+ (this.scoreDoc == null ? "none" : this.scoreDoc) + ">";
+					+ this.nextFirstHit + ">";
 		}
 	}
 

@@ -26,7 +26,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.RAMDirectory;
@@ -268,20 +267,12 @@ public class LuceneServer extends OtpGenServer {
 		IndexSearcher searcher = new IndexSearcher(reader);
 		TopDocs topDocs;
 
-		if (pageToken.getSortFields().length == 0) {
-			TopScoreDocCollector collector = pageToken.getScoreDoc() == null ? TopScoreDocCollector
-					.create(pageSize, true) : TopScoreDocCollector.create(
-					pageSize, pageToken.getScoreDoc(), true);
-			searcher.search(q, collector);
-			topDocs = collector.topDocs();
-		} else {
-			Sort sort = new Sort(pageToken.getSortFields());
-			TopFieldCollector collector = TopFieldCollector.create(sort,
-					pageToken.getNextFirstHit() + pageSize - 1, false, false,
-					false, false);
-			searcher.search(q, collector);
-			topDocs = collector.topDocs(pageToken.getNextFirstHit() - 1);
-		}
+		Sort sort = new Sort(pageToken.getSortFields());
+		TopFieldCollector collector = TopFieldCollector.create(sort,
+				pageToken.getNextFirstHit() + pageSize - 1, true, true, true,
+				true);
+		searcher.search(q, collector);
+		topDocs = collector.topDocs(pageToken.getNextFirstHit() - 1);
 
 		ScoreDoc[] hits = topDocs.scoreDocs;
 		// jlog.info("Sort: " + sort + "; topDocs: " + topDocs + "; hits: + " +
@@ -298,7 +289,6 @@ public class LuceneServer extends OtpGenServer {
 		searcher.close();
 
 		if (hits.length == pageSize) { // There may be a following page
-			pageToken.setScoreDoc(hits[pageSize - 1]);
 			pageToken.incrementFirstHit(pageSize);
 		} else {
 			pageToken = new LucenePageToken();
