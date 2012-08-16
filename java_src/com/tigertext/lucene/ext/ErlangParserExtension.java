@@ -63,7 +63,7 @@ public class ErlangParserExtension extends ParserExtension {
 				}
 			}
 
-			jlog.info("erlang query using " + key + " and " + mod + ":" + fun
+			jlog.fine("erlang query using " + key + " and " + mod + ":" + fun
 					+ "(" + args + "É");
 
 			Filter filter = new ErlangFilter(mod, fun, args, key,

@@ -148,7 +148,7 @@ public class ErlangFilter extends Filter {
 			e.printStackTrace();
 		}
 
-		jlog.info("Bits: " + bits.getBits());
+		jlog.finer("Bits: " + bits.getBits());
 		return bits;
 	}
 
