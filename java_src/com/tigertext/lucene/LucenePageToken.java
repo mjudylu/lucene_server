@@ -10,18 +10,10 @@ import org.apache.lucene.search.SortField;
 public final class LucenePageToken implements Serializable {
 	private static final long	serialVersionUID	= -5595064630916761399L;
 
-	private boolean				empty;
 	private int					nextFirstHit;
 	private String				queryString;
 
 	private SortField[]			sortFields;
-
-	/**
-	 * Generates an empty page token, used to signal there're no more pages
-	 */
-	public LucenePageToken() {
-		this.empty = true;
-	}
 
 	/**
 	 * Generates a token without scoreDoc, used as a reference to "first page"
@@ -33,20 +25,12 @@ public final class LucenePageToken implements Serializable {
 	 *            The fields used to sort the result
 	 */
 	public LucenePageToken(String queryString, SortField[] sortFields) {
-		this.empty = false;
 		this.queryString = queryString;
 		this.sortFields = new SortField[sortFields.length + 1];
 		this.sortFields[0] = SortField.FIELD_SCORE;
 		for (int i = 0; i < sortFields.length; i++)
 			this.sortFields[i + 1] = sortFields[i];
 		this.nextFirstHit = 1;
-	}
-
-	/**
-	 * @return Is this an empty page?s
-	 */
-	public boolean isEmpty() {
-		return empty;
 	}
 
 	/**
@@ -67,12 +51,8 @@ public final class LucenePageToken implements Serializable {
 
 	@Override
 	public String toString() {
-		if (this.empty) {
-			return "<emtpy token>";
-		} else {
-			return "<token for " + this.queryString + ". Doc: "
-					+ this.nextFirstHit + ">";
-		}
+		return "<token for " + this.queryString + ". Doc: " + this.nextFirstHit
+				+ ">";
 	}
 
 	/**

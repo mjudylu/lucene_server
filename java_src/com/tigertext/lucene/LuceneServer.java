@@ -52,10 +52,6 @@ public class LuceneServer extends OtpGenServer {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
 												.getName());
 
-	protected class EndOfTableException extends Exception {
-		private static final long	serialVersionUID	= 3118984031523050939L;
-	}
-
 	protected Analyzer				analyzer;
 	protected Directory				index;
 	protected IndexWriter			writer;
@@ -64,6 +60,12 @@ public class LuceneServer extends OtpGenServer {
 
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
+	/**
+	 * @param host
+	 * @throws CorruptIndexException
+	 * @throws LockObtainFailedException
+	 * @throws IOException
+	 */
 	public LuceneServer(OtpNode host) throws CorruptIndexException,
 			LockObtainFailedException, IOException {
 		super(host, "lucene_server");
@@ -117,10 +119,6 @@ public class LuceneServer extends OtpGenServer {
 						new OtpErlangAtom("ok"),
 						match(new LucenePageToken(queryString, sortFields),
 								pageSize) });
-			} catch (EndOfTableException eote) {
-				return new OtpErlangTuple(new OtpErlangObject[] {
-						new OtpErlangAtom("ok"),
-						new OtpErlangAtom("$end_of_table") });
 			} catch (IOException ioe) {
 				jlog.severe("Couldn't search the index: " + ioe);
 				ioe.printStackTrace();
@@ -144,10 +142,6 @@ public class LuceneServer extends OtpGenServer {
 				return new OtpErlangTuple(new OtpErlangObject[] {
 						new OtpErlangAtom("ok"),
 						continueMatch(pageToken, pageSize) });
-			} catch (EndOfTableException e) {
-				return new OtpErlangTuple(new OtpErlangObject[] {
-						new OtpErlangAtom("ok"),
-						new OtpErlangAtom("$end_of_table") });
 			} catch (IOException ioe) {
 				jlog.severe("Couldn't search the index: " + ioe);
 				ioe.printStackTrace();
@@ -248,18 +242,14 @@ public class LuceneServer extends OtpGenServer {
 	}
 
 	protected OtpErlangObject continueMatch(Object pageTokenAsObject,
-			int pageSize) throws EndOfTableException, IOException,
+			int pageSize) throws IOException,
 			ParseException {
 		LucenePageToken pageToken = (LucenePageToken) pageTokenAsObject;
-		if (pageToken.isEmpty()) {
-			throw new LuceneServer.EndOfTableException();
-		} else {
-			return match(pageToken, pageSize);
-		}
+		return match(pageToken, pageSize);
 	}
 
 	private OtpErlangObject match(LucenePageToken pageToken, int pageSize)
-			throws EndOfTableException, IOException, ParseException {
+			throws IOException, ParseException {
 		IndexReader reader = IndexReader.open(this.index);
 
 		Query q = this.queryParser.parse(pageToken.getQueryString());
@@ -288,13 +278,8 @@ public class LuceneServer extends OtpGenServer {
 		}
 		searcher.close();
 
-		boolean nextPage;
-		if (hits.length == pageSize) { // There may be a following page
-			nextPage = pageToken.incrementFirstHit(pageSize) <= topDocs.totalHits;
-		} else {
-			pageToken = new LucenePageToken();
-			nextPage = false;
-		}
+		boolean nextPage = hits.length == pageSize
+				&& pageToken.incrementFirstHit(pageSize) <= topDocs.totalHits;
 
 		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
