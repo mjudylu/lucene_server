@@ -288,24 +288,30 @@ public class LuceneServer extends OtpGenServer {
 		}
 		searcher.close();
 
+		boolean nextPage;
 		if (hits.length == pageSize) { // There may be a following page
-			pageToken.incrementFirstHit(pageSize);
+			nextPage = pageToken.incrementFirstHit(pageSize) <= topDocs.totalHits;
 		} else {
 			pageToken = new LucenePageToken();
+			nextPage = false;
 		}
 
 		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
 		// Metadata as a proplist
-		OtpErlangObject[] metadata = new OtpErlangObject[3];
-		metadata[0] = new OtpErlangTuple(
-				new OtpErlangObject[] { new OtpErlangAtom("next_page"),
-						new OtpErlangBinary(pageToken) });
-		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
+
+		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 3 : 2];
+		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("total_hits"),
 				new OtpErlangLong(topDocs.totalHits) });
-		metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
+		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
+		if (nextPage) {
+			metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("next_page"),
+					new OtpErlangBinary(pageToken) });
+		}
+
 		OtpErlangList metadataAsList = new OtpErlangList(metadata);
 
 		// Final result

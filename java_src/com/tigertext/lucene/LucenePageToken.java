@@ -38,7 +38,7 @@ public final class LucenePageToken implements Serializable {
 		this.sortFields = new SortField[sortFields.length + 1];
 		this.sortFields[0] = SortField.FIELD_SCORE;
 		for (int i = 0; i < sortFields.length; i++)
-			this.sortFields[i+1] = sortFields[i];
+			this.sortFields[i + 1] = sortFields[i];
 		this.nextFirstHit = 1;
 	}
 
@@ -59,9 +59,10 @@ public final class LucenePageToken implements Serializable {
 	/**
 	 * @param increment
 	 *            Increase the first hit for the next page
+	 * @return The resulting first hit
 	 */
-	public void incrementFirstHit(int increment) {
-		this.nextFirstHit += increment;
+	public int incrementFirstHit(int increment) {
+		return this.nextFirstHit += increment;
 	}
 
 	@Override
