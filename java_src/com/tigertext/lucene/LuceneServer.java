@@ -92,8 +92,9 @@ public class LuceneServer extends OtpGenServer {
 			add(this.translator
 					.convert(new OtpErlangList(new OtpErlangList(
 							new OtpErlangTuple(new OtpErlangObject[] {
-									new OtpErlangAtom("`do-not-use`"),
-									new OtpErlangAtom("`this-d0c`") })))));
+									new OtpErlangAtom("to"),
+									new OtpErlangAtom("delete") })))));
+			del("to:delete");
 		} catch (UnsupportedFieldTypeException e) {
 		}
 	}
