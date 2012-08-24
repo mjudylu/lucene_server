@@ -81,7 +81,9 @@ public abstract class OtpGenServer {
 		caller.send(server, msg);
 		OtpErlangObject res = timeout == 0 ? caller.receive() : caller
 				.receive(timeout);
-		if (res instanceof OtpErlangTuple
+		if (res == null) {
+			return null;
+		} else if (res instanceof OtpErlangTuple
 				&& ((OtpErlangTuple) res).arity() == 2) {
 			return ((OtpErlangTuple) res).elementAt(1);
 		} else {
@@ -144,7 +146,9 @@ public abstract class OtpGenServer {
 		caller.send(server, node, msg);
 		OtpErlangObject res = timeout == 0 ? caller.receive() : caller
 				.receive(timeout);
-		if (res instanceof OtpErlangTuple
+		if (res == null) {
+			return null;
+		} else if (res instanceof OtpErlangTuple
 				&& ((OtpErlangTuple) res).arity() == 2) {
 			return ((OtpErlangTuple) res).elementAt(1);
 		} else {
