@@ -88,6 +88,14 @@ public class LuceneServer extends OtpGenServer {
 		ext.add("erlang", new ErlangParserExtension(this.translator));
 		this.queryParser = new LuceneQueryParser(Version.LUCENE_36,
 				this.analyzer, this.translator, ext);
+		try {
+			add(this.translator
+					.convert(new OtpErlangList(new OtpErlangList(
+							new OtpErlangTuple(new OtpErlangObject[] {
+									new OtpErlangAtom("`do-not-use`"),
+									new OtpErlangAtom("`this-d0c`") })))));
+		} catch (UnsupportedFieldTypeException e) {
+		}
 	}
 
 	@Override
