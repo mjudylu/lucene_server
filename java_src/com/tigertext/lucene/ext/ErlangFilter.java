@@ -112,6 +112,7 @@ public class ErlangFilter extends Filter {
 		OtpErlangTuple call = new OtpErlangTuple(new OtpErlangObject[] {
 				this.mod, this.fun, this.arg, new OtpErlangList(docValues) });
 		try {
+			jlog.fine("Calling lucene @ " + LuceneNode.PEER + ":\n\t" + call);
 			OtpErlangObject response = OtpGenServer.call(LuceneNode.NODE,
 					"lucene", LuceneNode.PEER, call);
 
@@ -172,7 +173,11 @@ public class ErlangFilter extends Filter {
 		String[] origs = FieldCache.DEFAULT.getStrings(reader, this.fieldName);
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
-			docValues[i] = new OtpErlangString(origs[i]);
+			if (origs[i] != null) {
+				docValues[i] = new OtpErlangString(origs[i]);
+			} else {
+				docValues[i] = new OtpErlangAtom("undefined");
+			}
 		}
 		return docValues;
 	}
@@ -202,7 +207,11 @@ public class ErlangFilter extends Filter {
 		float[] origs = FieldCache.DEFAULT.getFloats(reader, this.fieldName);
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
-			docValues[i] = new OtpErlangFloat(origs[i]);
+			if (origs[i] != Float.NaN) {
+				docValues[i] = new OtpErlangFloat(origs[i]);
+			} else {
+				docValues[i] = new OtpErlangAtom("undefined");
+			}
 		}
 		return docValues;
 	}
@@ -212,7 +221,11 @@ public class ErlangFilter extends Filter {
 		double[] origs = FieldCache.DEFAULT.getDoubles(reader, this.fieldName);
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
-			docValues[i] = new OtpErlangDouble(origs[i]);
+			if (origs[i] != Double.NaN) {
+				docValues[i] = new OtpErlangDouble(origs[i]);
+			} else {
+				docValues[i] = new OtpErlangAtom("undefined");
+			}
 		}
 		return docValues;
 	}
@@ -222,7 +235,11 @@ public class ErlangFilter extends Filter {
 		String[] origs = FieldCache.DEFAULT.getStrings(reader, this.fieldName);
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
-			docValues[i] = new OtpErlangAtom(origs[i]);
+			if (origs[i] != null) {
+				docValues[i] = new OtpErlangAtom(origs[i]);
+			} else {
+				docValues[i] = new OtpErlangAtom("undefined");
+			}
 		}
 		return docValues;
 	}
