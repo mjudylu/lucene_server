@@ -40,7 +40,7 @@
 %%-------------------------------------------------------------------
 %% @doc  Starts a new monitor
 -spec start_link() -> {ok, pid()} | {error, term()}.
-start_link() -> gen_server:start_link(?MODULE, [], []).
+start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %% @doc Returns the pid of the lucene process
 -spec process() -> pid().
@@ -94,6 +94,7 @@ init([]) ->
       _ = lager:critical("You need to have java installed.", []),
       throw({stop, java_missing});
     Java ->
+      ThisNode = this_node(),
       JavaNode = java_node(),
       Priv =
         case code:priv_dir(lucene_server) of
@@ -108,12 +109,26 @@ init([]) ->
                          [{line,1000}, stderr_to_stdout,
                           {args, ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
-                                  JavaNode, erlang:get_cookie()]}]),
+                                  ThisNode, JavaNode, erlang:get_cookie()]}]),
       {ok, #state{java_port = Port, java_node = JavaNode}}
   end.
 
 %% @private
 -spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
+handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
+  lager:debug("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
+  Reply =
+    try
+      {ok, Scanned, _} = erl_scan:string(Args++"."),
+      {ok, Parsed} = erl_parse:parse_exprs(Scanned),
+      {value, Arguments, _} = erl_eval:exprs(Parsed, []),
+      erlang:apply(Mod,Fun, Arguments ++ [Values])
+    catch
+      _:Error ->
+        lager:error("Bad RPC call (~p): ~p~n\t~p", [Call, Error, erlang:get_stacktrace()]),
+        {error, Error}
+    end,
+  {reply, Reply, State};
 handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.
 
 %% @private
@@ -164,6 +179,8 @@ otp_lib(Path) ->
 
 test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
 test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
+
+this_node() -> atom_to_list(node()).
 
 java_node() ->
   case string:tokens(atom_to_list(node()), "@") of

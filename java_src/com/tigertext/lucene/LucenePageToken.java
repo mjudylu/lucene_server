@@ -2,7 +2,6 @@ package com.tigertext.lucene;
 
 import java.io.Serializable;
 
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SortField;
 
 /**
@@ -11,19 +10,10 @@ import org.apache.lucene.search.SortField;
 public final class LucenePageToken implements Serializable {
 	private static final long	serialVersionUID	= -5595064630916761399L;
 
-	private boolean				empty;
-	private ScoreDoc			scoreDoc;
 	private int					nextFirstHit;
 	private String				queryString;
 
 	private SortField[]			sortFields;
-
-	/**
-	 * Generates an empty page token, used to signal there're no more pages
-	 */
-	public LucenePageToken() {
-		this.empty = true;
-	}
 
 	/**
 	 * Generates a token without scoreDoc, used as a reference to "first page"
@@ -35,33 +25,12 @@ public final class LucenePageToken implements Serializable {
 	 *            The fields used to sort the result
 	 */
 	public LucenePageToken(String queryString, SortField[] sortFields) {
-		this.empty = false;
-		this.scoreDoc = null;
 		this.queryString = queryString;
-		this.sortFields = sortFields;
+		this.sortFields = new SortField[sortFields.length + 1];
+		this.sortFields[0] = SortField.FIELD_SCORE;
+		for (int i = 0; i < sortFields.length; i++)
+			this.sortFields[i + 1] = sortFields[i];
 		this.nextFirstHit = 1;
-	}
-
-	/**
-	 * @return Is this an empty page?s
-	 */
-	public boolean isEmpty() {
-		return empty;
-	}
-
-	/**
-	 * @return The score doc to use by the TopScoreDocCollector
-	 */
-	public ScoreDoc getScoreDoc() {
-		return scoreDoc;
-	}
-
-	/**
-	 * @param scoreDoc
-	 *            Sets the score doc to use by the TopScoreDocCollector
-	 */
-	public void setScoreDoc(ScoreDoc scoreDoc) {
-		this.scoreDoc = scoreDoc;
 	}
 
 	/**
@@ -74,19 +43,16 @@ public final class LucenePageToken implements Serializable {
 	/**
 	 * @param increment
 	 *            Increase the first hit for the next page
+	 * @return The resulting first hit
 	 */
-	public void incrementFirstHit(int increment) {
-		this.nextFirstHit += increment;
+	public int incrementFirstHit(int increment) {
+		return this.nextFirstHit += increment;
 	}
 
 	@Override
 	public String toString() {
-		if (this.empty) {
-			return "<emtpy token>";
-		} else {
-			return "<token for " + this.queryString + ". Doc: "
-					+ (this.scoreDoc == null ? "none" : this.scoreDoc) + ">";
-		}
+		return "<token for " + this.queryString + ". Doc: " + this.nextFirstHit
+				+ ">";
 	}
 
 	/**

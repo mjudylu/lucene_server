@@ -92,7 +92,7 @@ public class LuceneQueryParser extends ExtendableQueryParser {
 	@Override
 	protected Query getFuzzyQuery(String field, String termStr,
 			float minSimilarity) throws ParseException {
-		jlog.info("Fuzzy query " + field + ":" + termStr + " | "
+		jlog.finer("Fuzzy query " + field + ":" + termStr + " | "
 				+ minSimilarity);
 		return super.getFuzzyQuery(field, termStr, minSimilarity);
 	}
