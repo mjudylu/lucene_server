@@ -1,18 +1,63 @@
 %% @hidden
 -module(queries_SUITE).
 
--export([all/0, distance/1, hsin/2]).
+-export([all/0, distance/1, rpc/1, rpc_return/2, rpc_echo/1, hsin/2, init_per_suite/1, end_per_suite/1]).
 
 -include("lucene.hrl").
 
 -type config() :: [{atom(), term()}].
 
 -spec all() -> [atom()].
-all() -> [distance].
+all() -> [distance, rpc].
+
+-spec init_per_suite(config()) -> config().
+init_per_suite(Config) ->
+  lucene_server:start(),
+  timer:sleep(2000),
+  Config.
+
+-spec end_per_suite(config()) -> config().
+end_per_suite(Config) ->
+  Config.
+
+-spec rpc_return(term(), [undefined | integer()]) -> term().
+rpc_return(Return, Is) -> [Return || _ <- Is].
+
+-spec rpc_echo([undefined | integer()]) -> term().
+rpc_echo(Is) -> [case I of undefined -> undefined; I -> erlang:float(I) end || I <- Is].
+
+-spec rpc(config()) -> _.
+rpc(_Config) ->
+  PageSize = 5,
+
+  ok = lucene:clear(),
+  Docs = [[{i, I}] || I <- lists:seq(PageSize, 1, -1)],
+  ok = lucene:add(Docs),
+
+  {[], _} = lucene:match("i.erlang:\"queries_SUITE:rpc_return:[false]\"", PageSize),
+  {Rs, M} = lucene:match("i.erlang:\"queries_SUITE:rpc_echo\"", PageSize),
+  5 = proplists:get_value(total_hits, M),
+  Docs = [[lists:keyfind(i, 1, R)] || R <- Rs],
+
+  {[], _} = lucene:match("i.erlang:\"queries_SUITE:rpc_not_exported\"", PageSize),
+
+  lucene:clear().
 
 -spec distance(config()) -> _.
 distance(_Config) ->
   PageSize = 5,
+
+  try lucene:add([[{g, #geo{lat=-91.0}}]]) of
+    ok -> throw = ok
+  catch
+    _:LatErr -> {invalid_latitude, -91.0} = LatErr
+  end,
+
+  try lucene:add([[{g, #geo{lat=1.0, lng=181.0}}]]) of
+    ok -> throw = ok
+  catch
+    _:LngErr -> {invalid_longitude, 181.0} = LngErr
+  end,
 
   DsSouth = [[{g, #geo{lat=1.0 * I, lng=0.0}},   {d, s}, {i, I}] || I <- lists:seq(1, PageSize)],
   DsNorth = [[{g, #geo{lat=-1.0 * I, lng=0.0}},  {d, n}, {i, I}] || I <- lists:seq(1, PageSize)],

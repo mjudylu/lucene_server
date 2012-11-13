@@ -31,7 +31,7 @@ run: erl
 
 test: erl
 	mkdir -p log/ct
-	rebar skip_deps=true ct
+	rebar skip_deps=true ct -vvv
 	echo "Killing: " `ps aux | grep "LuceneNode" | grep -v "grep" | awk '{print $$2}'`
 	kill -9 `ps aux | grep "LuceneNode" | grep -v "grep" | awk '{print $$2}'`
 	open log/ct/index.html

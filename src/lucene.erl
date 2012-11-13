@@ -91,18 +91,11 @@ del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, normalize_unicode(Query)}).
 init([]) ->
   case os:find_executable("java") of
     [] ->
-      _ = lager:critical("You need to have java installed.", []),
       throw({stop, java_missing});
     Java ->
       ThisNode = this_node(),
       JavaNode = java_node(),
-      Priv =
-        case code:priv_dir(lucene_server) of
-          {error, bad_name} ->
-            lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
-            "./priv";
-          PrivDir -> filename:absname(PrivDir)
-        end,
+      Priv = priv_dir(lucene_server),
       Classpath = string:join([otp_lib("/OtpErlang.jar") | filelib:wildcard(Priv ++ "/*.jar")], ":"),
       Port =
         erlang:open_port({spawn_executable, Java},
@@ -114,7 +107,7 @@ init([]) ->
   end.
 
 %% @private
--spec handle_call(X, _From, state()) -> {stop, {unexpected_request, X}, {unexpected_request, X}, state()}.
+-spec handle_call({atom(), atom(), string(), [term()]}, _From, state()) -> {reply, term(), state()}.
 handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
   lager:debug("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
   Reply =
@@ -128,8 +121,7 @@ handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
         lager:error("Bad RPC call (~p): ~p~n\t~p", [Call, Error, erlang:get_stacktrace()]),
         {error, Error}
     end,
-  {reply, Reply, State};
-handle_call(X, _From, State) -> {stop, {unexpected_request, X}, {unexpected_request, X}, State}.
+  {reply, Reply, State}.
 
 %% @private
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.
@@ -148,16 +140,14 @@ handle_info({Port, {data, {noeol, JavaLog}}}, State = #state{java_port = Port}) 
   _ = lager:info("Java Log:\t~s...", [JavaLog]),
   {noreply, State};
 handle_info(Info, State) ->
-  _ = lager:warning("Unexpected info: ~p", [Info]),
   {noreply, State}.
-
-%% @private
--spec terminate(_, state()) -> true.
-terminate(_Reason, State) -> erlang:port_close(State#state.java_port).
 
 %% @private
 -spec handle_cast(term(), state()) -> {noreply, state()}.
 handle_cast(_Msg, State) -> {noreply, State}.
+%% @private
+-spec terminate(_, state()) -> true.
+terminate(_Reason, State) -> erlang:port_close(State#state.java_port).
 %% @private
 -spec code_change(term(), state(), term()) -> {ok, state()}.
 code_change(_OldVersion, State, _Extra) -> {ok, State}.
@@ -166,16 +156,18 @@ code_change(_OldVersion, State, _Extra) -> {ok, State}.
 %% PRIVATE
 %%-------------------------------------------------------------------
 %% @private
+priv_dir(App) ->
+  case code:priv_dir(App) of
+    {error, bad_name} ->
+      lager:info("Couldn't find priv dir for lucene_server, using ./priv"), "./priv";
+    PrivDir -> filename:absname(PrivDir)
+  end.
+
+%% @private
 %% @doc returns the absolute path to the otp erlang JAR
 otp_lib(Path) ->
-    JPriv =
-      case code:priv_dir(jinterface) of
-        {error, bad_name} ->
-          lager:info("Couldn't find priv dir for lucene_server, using ./priv"),
-          "./priv";
-        JPrivDir -> filename:absname(JPrivDir)
-      end,
-      test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
+  JPriv = priv_dir(jinterface),
+  test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
 
 test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
 test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
