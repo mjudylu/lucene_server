@@ -103,7 +103,7 @@ init([]) ->
                           {args, ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
                                   ThisNode, JavaNode, erlang:get_cookie()]}]),
-      {ok, #state{java_port = Port, java_node = JavaNode}}
+      wait_for_ready(#state{java_port = Port, java_node = JavaNode})
   end.
 
 %% @private
@@ -207,3 +207,19 @@ validate(Value) when is_list(Value) ->
   normalize_unicode(Value);
 validate(Value) ->
   Value.
+
+wait_for_ready(State = #state{java_port = Port}) ->
+  receive
+    {Port, {data, {eol, "READY"}}} ->
+      _ = lager:info("Java node started"),
+      true = link(process()),
+      true = erlang:monitor_node(State#state.java_node, true),
+      {ok, State};
+    Info ->
+      case handle_info(Info, State) of
+        {noreply, NewState} ->
+          wait_for_ready(NewState);
+        {stop, Reason, _NewState} ->
+          {stop, Reason}
+      end
+  end.
