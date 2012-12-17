@@ -128,11 +128,6 @@ handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
 handle_info({nodedown, JavaNode}, State = #state{java_node = JavaNode}) ->
   lager:error("Java node is down!"),
   {stop, nodedown, State};
-handle_info({Port, {data, {eol, "READY"}}}, State = #state{java_port = Port}) ->
-  _ = lager:info("Java node started"),
-  true = link(process()),
-  true = erlang:monitor_node(State#state.java_node, true),
-  {noreply, State};
 handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
   _ = lager:info("Java Log:\t~s", [JavaLog]),
   {noreply, State};
