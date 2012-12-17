@@ -1,5 +1,6 @@
 package com.tigertext.lucene;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,6 +12,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.document.NumericField;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.spatial.geohash.GeoHashUtils;
@@ -111,15 +114,30 @@ public class DocumentTranslator {
 		String fieldName = otpFieldName.atomValue();
 		switch (this.getFieldType(fieldName)) {
 		case DOUBLE:
-			return new SortField(fieldName, SortField.DOUBLE);
+			return new SortField(fieldName, SortField.DOUBLE)
+					.setMissingValue(Double.POSITIVE_INFINITY);
 		case FLOAT:
-			return new SortField(fieldName, SortField.FLOAT);
+			return new SortField(fieldName, SortField.FLOAT)
+					.setMissingValue(Float.POSITIVE_INFINITY);
 		case INT:
-			return new SortField(fieldName, SortField.INT);
+			return new SortField(fieldName, SortField.INT)
+					.setMissingValue(Integer.MAX_VALUE);
 		case LONG:
-			return new SortField(fieldName, SortField.LONG);
+			return new SortField(fieldName, SortField.LONG)
+					.setMissingValue(Long.MAX_VALUE);
 		default:
-			return new SortField(fieldName + "`sort", SortField.STRING_VAL);
+			return new SortField(fieldName + "`sort",
+					new FieldComparatorSource() {
+						private static final long	serialVersionUID	= 5383326726066892965L;
+
+						@Override
+						public FieldComparator<?> newComparator(String field,
+								int numHits, int sortPos, boolean reverse)
+								throws IOException {
+							return new MissingLastStringOrdValComparator(
+									numHits, field, sortPos, reverse);
+						}
+					});
 		}
 	}
 
