@@ -127,17 +127,7 @@ public class DocumentTranslator {
 					.setMissingValue(Long.MAX_VALUE);
 		default:
 			return new SortField(fieldName + "`sort",
-					new FieldComparatorSource() {
-						private static final long	serialVersionUID	= 5383326726066892965L;
-
-						@Override
-						public FieldComparator<?> newComparator(String field,
-								int numHits, int sortPos, boolean reverse)
-								throws IOException {
-							return new MissingLastStringOrdValComparator(
-									numHits, field, sortPos, reverse);
-						}
-					});
+					new MissingLastStringOrdValComparatorSource());
 		}
 	}
 
