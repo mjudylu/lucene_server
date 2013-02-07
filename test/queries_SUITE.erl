@@ -48,13 +48,13 @@ distance(_Config) ->
   PageSize = 5,
 
   try lucene:add([[{g, #geo{lat=-91.0}}]]) of
-    ok -> throw = ok
+    R0 -> throw = R0
   catch
     _:LatErr -> {invalid_latitude, -91.0} = LatErr
   end,
 
   try lucene:add([[{g, #geo{lat=1.0, lng=181.0}}]]) of
-    ok -> throw = ok
+    R1 -> throw = R1
   catch
     _:LngErr -> {invalid_longitude, 181.0} = LngErr
   end,

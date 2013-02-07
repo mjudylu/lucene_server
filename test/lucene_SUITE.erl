@@ -1,13 +1,13 @@
 -module(lucene_SUITE).
 
--export([all/0, keys/1, stop/1, add_del_clear/1, init_per_suite/1, end_per_suite/1]).
+-export([all/0, keys/1, stop/1, add_del_clear/1, complete_coverage/1, init_per_suite/1, end_per_suite/1]).
 
 -include("lucene.hrl").
 
 -type config() :: [{atom(), term()}].
 
 -spec all() -> [atom()].
-all() -> [add_del_clear, keys, stop].
+all() -> [add_del_clear, keys, stop, complete_coverage].
 
 -spec init_per_suite(config()) -> config().
 init_per_suite(Config) ->
@@ -18,6 +18,30 @@ init_per_suite(Config) ->
 -spec end_per_suite(config()) -> config().
 end_per_suite(Config) ->
   Config.
+
+-spec complete_coverage(config()) -> _.
+complete_coverage(_Config) ->
+	lucene ! ignored_info,
+	timer:sleep(500),
+	ok = gen_server:cast(lucene, ignored_cast),
+	{ok, state} = lucene:code_change(oldvsn, state, extra),
+	LucenePath = filename:join(filename:dirname(code:priv_dir(lucene_server)), "ebin"),
+	try
+		true = code:del_path(LucenePath),
+		[Name, Server] = string:tokens(atom_to_list(node()), "@"),
+		lucene ! {nodedown, list_to_atom(Name ++ "_java@" ++ Server)},
+		timer:sleep(500),
+		P = spawn(lucene_server, start, []),
+		timer:sleep(1000),
+		%% It shouldn't have been able to start...
+		true = erlang:is_process_alive(P),
+		lucene ! {nodedown, list_to_atom(Name ++ "_java@" ++ Server)}
+	after
+		code:add_patha(LucenePath),
+		whereis(lucene) =/= undefined andalso exit(whereis(lucene), kill),
+		lucene_server:start()
+	end,
+	ok.
 
 -spec stop(config()) -> _.
 stop(_Config) ->
