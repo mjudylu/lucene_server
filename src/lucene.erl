@@ -89,6 +89,7 @@ del(Query) -> gen_server:cast(?LUCENE_SERVER, {del, normalize_unicode(Query)}).
 %% @private
 -spec init([]) -> {ok, state()}.
 init([]) ->
+    wpool_pool:create_table(),
   case os:find_executable("java") of
     [] ->
       throw({stop, java_missing});
