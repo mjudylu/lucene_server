@@ -107,21 +107,10 @@ init([]) ->
   end.
 
 %% @private
--spec handle_call({atom(), atom(), string(), [term()]}, _From, state()) -> {reply, term(), state()}.
-handle_call({Mod, Fun, Args, Values} = Call, _From, State) ->
-  lager:debug("Running ~p:~p(~s, ~p).", [Mod, Fun, Args, Values]),
-  Reply =
-    try
-      {ok, Scanned, _} = erl_scan:string(Args++"."),
-      {ok, Parsed} = erl_parse:parse_exprs(Scanned),
-      {value, Arguments, _} = erl_eval:exprs(Parsed, []),
-      erlang:apply(Mod,Fun, Arguments ++ [Values])
-    catch
-      _:Error ->
-        lager:error("Bad RPC call (~p): ~p~n\t~p", [Call, Error, erlang:get_stacktrace()]),
-        {error, Error}
-    end,
-  {reply, Reply, State}.
+-spec handle_call({atom(), atom(), string(), [term()]}, _From, state()) -> {noreply, state()}.
+handle_call(Call, From, State) ->
+  lucene_worker:run(Call, From),
+  {noreply, State}.
 
 %% @private
 -spec handle_info({nodedown, atom()}, state()) -> {stop, nodedown, state()} | {noreply, state()}.

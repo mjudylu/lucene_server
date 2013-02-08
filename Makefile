@@ -1,4 +1,4 @@
-ERLANG := erl -pa ebin -pa deps/*/ebin -smp enable -s lager -setcookie tigertext_lucene ${ERL_ARGS}
+ERLANG := erl -pa ebin -pa deps/*/ebin -smp enable -s lager -s wpool -setcookie tigertext_lucene ${ERL_ARGS}
 
 all: clean
 	rebar get-deps && rebar --verbose compile
