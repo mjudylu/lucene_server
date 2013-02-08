@@ -81,4 +81,4 @@ concurrency(NumDocs, NumFields, N, Query, CTop, CStep) ->
 -spec sleep(pos_integer(), [undefined | integer()]) -> [undefined | float()].
 sleep(Ms, Is) ->
 	timer:sleep(Ms),
-	[case I of [$d|I] -> erlang:float(I); _ -> undefined end || I <- Is].
+	[element(1, string:to_float(I ++ ".0")) || [_|I] <- Is].
