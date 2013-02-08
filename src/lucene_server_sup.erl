@@ -33,5 +33,6 @@ init([]) ->
   {ok,
     {_SupFlags = {one_for_one, 0, 1},
       [
-        {lucene, {lucene, start_link, []}, permanent, 2000, worker, [lucene]}
+        {lucene, {lucene, start_link, []}, permanent, 2000, worker, [lucene]},
+        {lucene_workers, {lucene_worker, start_pool, []}, permanent, 2000, supervisor, [lucene_worker]}
       ]}}.
