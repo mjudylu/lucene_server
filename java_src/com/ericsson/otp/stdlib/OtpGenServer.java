@@ -236,12 +236,31 @@ public abstract class OtpGenServer {
 	 * @param reply
 	 *            Response to send
 	 */
-	public void reply(OtpErlangTuple from, OtpErlangObject reply) {
+	protected void reply(OtpErlangTuple from, OtpErlangObject reply) {
 		OtpErlangPid to = (OtpErlangPid) from.elementAt(0);
 		OtpErlangRef tag = (OtpErlangRef) from.elementAt(1);
 		OtpErlangTuple tuple = new OtpErlangTuple((new OtpErlangObject[] { tag,
 				reply }));
 		mbox.send(to, tuple);
+	}
+
+	/**
+	 * Returns a reply to the calling process
+	 * 
+	 * @param host
+	 *            This Node
+	 * @param from
+	 *            The caller
+	 * @param reply
+	 *            The response to be sent
+	 */
+	public static void reply(OtpNode host, OtpErlangTuple from,
+			OtpErlangObject reply) {
+		OtpErlangPid to = (OtpErlangPid) from.elementAt(0);
+		OtpErlangRef tag = (OtpErlangRef) from.elementAt(1);
+		OtpErlangTuple tuple = new OtpErlangTuple((new OtpErlangObject[] { tag,
+				reply }));
+		host.createMbox().send(to, tuple);
 	}
 
 	protected abstract OtpErlangObject handleCall(OtpErlangObject cmd,
