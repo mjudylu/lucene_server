@@ -23,7 +23,7 @@
 
 -record(state, {java_port :: port(),
                 java_node :: atom()}).
--opaque state() :: #state{}.
+-type state() :: #state{}.
 
 -include("lucene.hrl").
 
