@@ -117,7 +117,7 @@ public class ErlangFilter extends Filter {
 					"lucene", LuceneNode.PEER, call);
 
 			if (response == null) {
-				jlog.warning("The rpc call " + call
+				jlog.warning("The rpc call to " + this.mod + ":" + this.fun
 						+ " timed out. No results will be returned");
 			} else if (response instanceof OtpErlangList) {
 				OtpErlangList results = (OtpErlangList) response;
@@ -132,19 +132,23 @@ public class ErlangFilter extends Filter {
 					}
 				}
 			} else {
-				jlog.severe("The rpc call " + call + " failed: " + response
+				jlog.severe("The rpc call to " + this.mod + ":" + this.fun
+						+ " failed: " + response
 						+ ". No results will be returned");
 			}
 		} catch (OtpErlangExit e) {
-			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+			jlog.severe("The rpc call to " + this.mod + ":" + this.fun
+					+ " failed: " + e.getMessage()
 					+ ". No results will be returned");
 			e.printStackTrace();
 		} catch (OtpErlangDecodeException e) {
-			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+			jlog.severe("The rpc call to " + this.mod + ":" + this.fun
+					+ " failed: " + e.getMessage()
 					+ ". No results will be returned");
 			e.printStackTrace();
 		} catch (OtpErlangException e) {
-			jlog.severe("The rpc call " + call + " failed: " + e.getMessage()
+			jlog.severe("The rpc call to " + this.mod + ":" + this.fun
+					+ " failed: " + e.getMessage()
 					+ ". No results will be returned");
 			e.printStackTrace();
 		}

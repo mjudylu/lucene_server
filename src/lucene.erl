@@ -23,7 +23,7 @@
 
 -record(state, {java_port :: port(),
                 java_node :: atom()}).
--opaque state() :: #state{}.
+-type state() :: #state{}.
 
 -include("lucene.hrl").
 
@@ -123,7 +123,7 @@ handle_info({Port, {data, {eol, JavaLog}}}, State = #state{java_port = Port}) ->
 handle_info({Port, {data, {noeol, JavaLog}}}, State = #state{java_port = Port}) ->
   _ = lager:info("Java Log:\t~s...", [JavaLog]),
   {noreply, State};
-handle_info(Info, State) ->
+handle_info(_Info, State) ->
   {noreply, State}.
 
 %% @private

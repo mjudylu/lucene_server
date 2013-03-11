@@ -9,7 +9,7 @@
 -behaviour(gen_server).
 
 -record(state, {}).
--opaque state() :: #state{}.
+-type state() :: #state{}.
 
 %% API
 -export([start_pool/0, run/2]).
