@@ -332,30 +332,52 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runMatch(final String queryString, final int pageSize,
 			final SortField[] sortFields, final OtpErlangTuple from) {
-		new Thread() {
-			@Override
-			public void run() {
-				OtpErlangObject reply = null;
-				try {
-					reply = new OtpErlangTuple(new OtpErlangObject[] {
-							new OtpErlangAtom("ok"),
-							match(new LucenePageToken(queryString, sortFields),
-									pageSize) });
-				} catch (IOException ioe) {
-					jlog.severe("Couldn't search the index: " + ioe);
-					ioe.printStackTrace();
-					reply = new OtpErlangTuple(new OtpErlangObject[] {
-							new OtpErlangAtom("error"),
-							new OtpErlangString(ioe.getMessage()) });
-				} catch (ParseException pe) {
-					jlog.severe("Bad Formatted Query");
-					pe.printStackTrace();
-					reply = new OtpErlangTuple(new OtpErlangObject[] {
-							new OtpErlangAtom("error"),
-							new OtpErlangString(pe.getMessage()) });
+		int threadCount = Thread.activeCount();
+		jlog.info("Currently using " + threadCount + " threads");
+		if (threadCount < 25) {
+			new Thread() {
+				@Override
+				public void run() {
+					doRunMatch(queryString, pageSize, sortFields, from);
 				}
-				OtpGenServer.reply(LuceneNode.NODE, from, reply);
-			}
-		}.start();
+			}.start();
+		} else {
+			jlog.warning("More than 25 threads... running the query locally");
+			doRunMatch(queryString, pageSize, sortFields, from);
+		}
+	}
+
+	/**
+	 * @param queryString
+	 *            Query to match indexed docs against
+	 * @param sortFields
+	 *            Fields to sort the result
+	 * @param pageSize
+	 *            Number of results per page
+	 * @param from
+	 *            Process expecting the response
+	 */
+	protected void doRunMatch(final String queryString, final int pageSize,
+			final SortField[] sortFields, final OtpErlangTuple from) {
+		OtpErlangObject reply = null;
+		try {
+			reply = new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("ok"),
+					match(new LucenePageToken(queryString, sortFields),
+							pageSize) });
+		} catch (IOException ioe) {
+			jlog.severe("Couldn't search the index: " + ioe);
+			ioe.printStackTrace();
+			reply = new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("error"),
+					new OtpErlangString(ioe.getMessage()) });
+		} catch (ParseException pe) {
+			jlog.severe("Bad Formatted Query");
+			pe.printStackTrace();
+			reply = new OtpErlangTuple(new OtpErlangObject[] {
+					new OtpErlangAtom("error"),
+					new OtpErlangString(pe.getMessage()) });
+		}
+		OtpGenServer.reply(LuceneNode.NODE, from, reply);
 	}
 }
