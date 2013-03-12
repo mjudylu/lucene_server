@@ -3,6 +3,7 @@ package com.tigertext.lucene;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -230,6 +231,7 @@ public class LuceneServer extends OtpGenServer {
 
 	private OtpErlangObject match(LucenePageToken pageToken, int pageSize)
 			throws IOException, ParseException {
+		long t0 = System.nanoTime();
 		IndexReader reader = IndexReader.open(this.index);
 
 		Query q = this.queryParser().parse(pageToken.getQueryString());
@@ -263,16 +265,21 @@ public class LuceneServer extends OtpGenServer {
 
 		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
+		long queryTime = (System.nanoTime() - t0) / 1000;
+		
 		// Metadata as a proplist
 
-		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 3 : 2];
+		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 4 : 3];
 		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("total_hits"),
 				new OtpErlangLong(topDocs.totalHits) });
 		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
+		metadata[2] = new OtpErlangTuple(
+				new OtpErlangObject[] { new OtpErlangAtom("query_time"),
+						new OtpErlangLong(queryTime) });
 		if (nextPage) {
-			metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
+			metadata[3] = new OtpErlangTuple(new OtpErlangObject[] {
 					new OtpErlangAtom("next_page"),
 					new OtpErlangBinary(pageToken) });
 		}
