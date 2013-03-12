@@ -97,10 +97,15 @@ init([]) ->
       JavaNode = java_node(),
       Priv = priv_dir(lucene_server),
       Classpath = string:join([otp_lib("/OtpErlang.jar") | filelib:wildcard(Priv ++ "/*.jar")], ":"),
+      JavaArgs =
+          case application:get_env(lucene_server, java_args) of
+              {ok, Args} -> Args;
+              undefined -> []
+          end,
       Port =
         erlang:open_port({spawn_executable, Java},
                          [{line,1000}, stderr_to_stdout,
-                          {args, ["-classpath", Classpath,
+                          {args, JavaArgs ++ ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
                                   ThisNode, JavaNode, erlang:get_cookie()]}]),
       wait_for_ready(#state{java_port = Port, java_node = JavaNode})
