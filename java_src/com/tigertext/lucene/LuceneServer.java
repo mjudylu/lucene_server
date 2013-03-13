@@ -245,6 +245,7 @@ public class LuceneServer extends OtpGenServer {
 
 	private OtpErlangObject match(LucenePageToken pageToken, int pageSize)
 			throws IOException, ParseException {
+
 		long t0 = System.nanoTime();
 		IndexReader reader = IndexReader.open(this.index);
 
@@ -257,7 +258,11 @@ public class LuceneServer extends OtpGenServer {
 		TopFieldCollector collector = TopFieldCollector.create(sort,
 				pageToken.getNextFirstHit() + pageSize - 1, true, true, true,
 				true);
+
+		long t1 = System.nanoTime();
 		searcher.search(q, collector);
+		long t2 = System.nanoTime();
+
 		topDocs = collector.topDocs(pageToken.getNextFirstHit() - 1);
 
 		ScoreDoc[] hits = topDocs.scoreDocs;
@@ -279,21 +284,26 @@ public class LuceneServer extends OtpGenServer {
 
 		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
-		long queryTime = (System.nanoTime() - t0) / 1000;
-		
+		long t3 = System.nanoTime();
+
+		long queryTime = (t3 - t0) / 1000;
+		long searchTime = (t2 - t1) / 1000;
+
 		// Metadata as a proplist
 
-		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 4 : 3];
+		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 5 : 4];
 		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("total_hits"),
 				new OtpErlangLong(topDocs.totalHits) });
 		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
-		metadata[2] = new OtpErlangTuple(
-				new OtpErlangObject[] { new OtpErlangAtom("query_time"),
-						new OtpErlangLong(queryTime) });
+		metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
+				new OtpErlangAtom("query_time"), new OtpErlangLong(queryTime) });
+		metadata[3] = new OtpErlangTuple(
+				new OtpErlangObject[] { new OtpErlangAtom("search_time"),
+						new OtpErlangLong(searchTime) });
 		if (nextPage) {
-			metadata[3] = new OtpErlangTuple(new OtpErlangObject[] {
+			metadata[4] = new OtpErlangTuple(new OtpErlangObject[] {
 					new OtpErlangAtom("next_page"),
 					new OtpErlangBinary(pageToken) });
 		}
