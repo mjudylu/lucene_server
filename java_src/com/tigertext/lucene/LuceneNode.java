@@ -55,7 +55,7 @@ public class LuceneNode {
 	}
 
 	protected static void forever(final OtpGenServer server) {
-		new Thread() {
+		new Thread("LuceneServer") {
 			@Override
 			public void run() {
 				while (true) {

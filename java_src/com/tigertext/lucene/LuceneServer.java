@@ -120,7 +120,7 @@ public class LuceneServer extends OtpGenServer {
 		final SearcherManager searcherManager = new SearcherManager(
 				this.writer, true, null);
 		this.searcherManager = searcherManager;
-		new Thread() {
+		new Thread("SearcherManager-refresher") {
 			@Override
 			public void run() {
 				try {
@@ -349,7 +349,7 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runContinue(final Object pageToken, final int pageSize,
 			final OtpErlangTuple from) {
-		new Thread() {
+		new Thread("continue-runner") {
 			@Override
 			public void run() {
 				OtpErlangObject reply = null;
@@ -390,7 +390,7 @@ public class LuceneServer extends OtpGenServer {
 		int threadCount = Thread.activeCount() - this.initialThreads;
 		jlog.info("Currently using " + threadCount + " threads");
 		if (threadCount <= this.allowedThreads) {
-			new Thread() {
+			new Thread("query-runner") {
 				@Override
 				public void run() {
 					doRunMatch(queryString, pageSize, sortFields, from);
