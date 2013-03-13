@@ -67,7 +67,7 @@ handle_cast({run, {Mod, Fun, Args, Values} = Call, From}, State) ->
             {ok, Scanned, _} = erl_scan:string(Args++"."),
             {ok, Parsed} = erl_parse:parse_exprs(Scanned),
             {value, Arguments, _} = erl_eval:exprs(Parsed, []),
-            erlang:apply(Mod,Fun, Arguments ++ [Values])
+            erlang:apply(Mod,Fun, Arguments ++ [[parse_value(Value) || Value <- Values]])
         catch
             _:Error ->
                 lager:error("Bad RPC call (~p): ~p~n\t~p", [Call, Error, erlang:get_stacktrace()]),
@@ -75,3 +75,6 @@ handle_cast({run, {Mod, Fun, Args, Values} = Call, From}, State) ->
         end,
     gen_server:reply(From, Reply),
     {noreply, State}.
+
+parse_value(Value) when is_binary(Value) -> binary_to_list(Value); %% Strings are sent in as binaries to avoid conversion overheads
+parse_value(Value) -> Value.

@@ -12,6 +12,7 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.util.FixedBitSet;
 
 import com.ericsson.otp.erlang.OtpErlangAtom;
+import com.ericsson.otp.erlang.OtpErlangBinary;
 import com.ericsson.otp.erlang.OtpErlangDecodeException;
 import com.ericsson.otp.erlang.OtpErlangDouble;
 import com.ericsson.otp.erlang.OtpErlangException;
@@ -112,7 +113,8 @@ public class ErlangFilter extends Filter {
 		OtpErlangTuple call = new OtpErlangTuple(new OtpErlangObject[] {
 				this.mod, this.fun, this.arg, new OtpErlangList(docValues) });
 		try {
-			jlog.fine("Calling lucene @ " + LuceneNode.PEER + ":\n\t" + call);
+			jlog.fine("Calling lucene @ " + LuceneNode.PEER + ":\n\t"
+					+ this.mod + ":" + this.fun);
 			OtpErlangObject response = OtpGenServer.call(LuceneNode.NODE,
 					"lucene", LuceneNode.PEER, call);
 
@@ -178,7 +180,7 @@ public class ErlangFilter extends Filter {
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
 			if (origs[i] != null) {
-				docValues[i] = new OtpErlangString(origs[i]);
+				docValues[i] = new OtpErlangBinary(origs[i].getBytes());
 			} else {
 				docValues[i] = new OtpErlangAtom("undefined");
 			}
