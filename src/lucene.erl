@@ -95,6 +95,11 @@ init([]) ->
     Java ->
       ThisNode = this_node(),
       JavaNode = java_node(),
+      AllowedThreads =
+          case application:get_env(lucene_server, java_threads) of
+              {ok, Threads} -> Threads;
+              undefined -> 25
+          end,
       Priv = priv_dir(lucene_server),
       Classpath = string:join([otp_lib("/OtpErlang.jar") | filelib:wildcard(Priv ++ "/*.jar")], ":"),
       JavaArgs =
@@ -107,7 +112,8 @@ init([]) ->
                          [{line,1000}, stderr_to_stdout,
                           {args, JavaArgs ++ ["-classpath", Classpath,
                                   "com.tigertext.lucene.LuceneNode",
-                                  ThisNode, JavaNode, erlang:get_cookie()]}]),
+                                  ThisNode, JavaNode, erlang:get_cookie(),
+                                  integer_to_list(AllowedThreads)]}]),
       wait_for_ready(#state{java_port = Port, java_node = JavaNode})
   end.
 

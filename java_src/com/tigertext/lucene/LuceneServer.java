@@ -3,7 +3,6 @@ package com.tigertext.lucene;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -49,6 +48,10 @@ import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
 import com.tigertext.lucene.ext.ErlangParserExtension;
 import com.tigertext.lucene.ext.NearParserExtension;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * 
+ */
 public class LuceneServer extends OtpGenServer {
 	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
 													.getName());
@@ -59,17 +62,28 @@ public class LuceneServer extends OtpGenServer {
 	protected DocumentTranslator	translator;
 	protected Extensions			extensions;
 
+	private int						allowedThreads;
+
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
 	/**
 	 * @param host
+	 *            Host node
+	 * @param allowedThreads
+	 *            Number of threads allowed to run queries at the same time
 	 * @throws CorruptIndexException
+	 *             Check Lucene docs for a description
 	 * @throws LockObtainFailedException
+	 *             Check Lucene docs for a description
 	 * @throws IOException
+	 *             Check Lucene docs for a description
 	 */
-	public LuceneServer(OtpNode host) throws CorruptIndexException,
-			LockObtainFailedException, IOException {
+	public LuceneServer(OtpNode host, int allowedThreads)
+			throws CorruptIndexException, LockObtainFailedException,
+			IOException {
 		super(host, "lucene_server");
+
+		this.allowedThreads = allowedThreads;
 
 		this.analyzer = new ReusableAnalyzerBase() {
 			@Override
@@ -339,9 +353,9 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runMatch(final String queryString, final int pageSize,
 			final SortField[] sortFields, final OtpErlangTuple from) {
-		int threadCount = Thread.activeCount();
+		int threadCount = Thread.activeCount() - 2; // Main one and this one
 		jlog.info("Currently using " + threadCount + " threads");
-		if (threadCount < 25) {
+		if (threadCount <= this.allowedThreads) {
 			new Thread() {
 				@Override
 				public void run() {
@@ -349,7 +363,8 @@ public class LuceneServer extends OtpGenServer {
 				}
 			}.start();
 		} else {
-			jlog.warning("More than 25 threads... running the query locally");
+			jlog.warning("More than " + this.allowedThreads
+					+ " threads... running the query locally");
 			doRunMatch(queryString, pageSize, sortFields, from);
 		}
 	}
