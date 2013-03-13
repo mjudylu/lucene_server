@@ -3,7 +3,6 @@ package com.tigertext.lucene;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -14,7 +13,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WhitespaceTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
@@ -23,6 +21,7 @@ import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -49,6 +48,10 @@ import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
 import com.tigertext.lucene.ext.ErlangParserExtension;
 import com.tigertext.lucene.ext.NearParserExtension;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * 
+ */
 public class LuceneServer extends OtpGenServer {
 	private static final Logger		jlog	= Logger.getLogger(LuceneServer.class
 													.getName());
@@ -59,17 +62,33 @@ public class LuceneServer extends OtpGenServer {
 	protected DocumentTranslator	translator;
 	protected Extensions			extensions;
 
+	private int						allowedThreads;
+
+	private int						initialThreads;
+
+	private SearcherManager			searcherManager;
+
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
 	/**
 	 * @param host
+	 *            Host node
+	 * @param allowedThreads
+	 *            Number of threads allowed to run queries at the same time
 	 * @throws CorruptIndexException
+	 *             Check Lucene docs for a description
 	 * @throws LockObtainFailedException
+	 *             Check Lucene docs for a description
 	 * @throws IOException
+	 *             Check Lucene docs for a description
 	 */
-	public LuceneServer(OtpNode host) throws CorruptIndexException,
-			LockObtainFailedException, IOException {
+	public LuceneServer(OtpNode host, int allowedThreads)
+			throws CorruptIndexException, LockObtainFailedException,
+			IOException {
 		super(host, "lucene_server");
+
+		this.allowedThreads = allowedThreads;
+		this.initialThreads = Thread.activeCount() + 2;
 
 		this.analyzer = new ReusableAnalyzerBase() {
 			@Override
@@ -98,6 +117,25 @@ public class LuceneServer extends OtpGenServer {
 			del("to:delete");
 		} catch (UnsupportedFieldTypeException e) {
 		}
+		final SearcherManager searcherManager = new SearcherManager(
+				this.writer, true, null);
+		this.searcherManager = searcherManager;
+		new Thread() {
+			@Override
+			public void run() {
+				try {
+					sleep(500);
+				} catch (InterruptedException e) {
+					return;
+				}
+				try {
+					searcherManager.maybeRefresh();
+				} catch (IOException ioe) {
+					jlog.severe("Couldn't refresh searcher:\n\t" + ioe);
+					ioe.printStackTrace();
+				}
+			};
+		}.run();
 	}
 
 	@Override
@@ -231,19 +269,24 @@ public class LuceneServer extends OtpGenServer {
 
 	private OtpErlangObject match(LucenePageToken pageToken, int pageSize)
 			throws IOException, ParseException {
+
 		long t0 = System.nanoTime();
-		IndexReader reader = IndexReader.open(this.index);
+
+		this.searcherManager.maybeRefresh();
+		IndexSearcher searcher = this.searcherManager.acquire();
 
 		Query q = this.queryParser().parse(pageToken.getQueryString());
-
-		IndexSearcher searcher = new IndexSearcher(reader);
 		TopDocs topDocs;
 
 		Sort sort = new Sort(pageToken.getSortFields());
 		TopFieldCollector collector = TopFieldCollector.create(sort,
 				pageToken.getNextFirstHit() + pageSize - 1, true, true, true,
 				true);
+
+		long t1 = System.nanoTime();
 		searcher.search(q, collector);
+		long t2 = System.nanoTime();
+
 		topDocs = collector.topDocs(pageToken.getNextFirstHit() - 1);
 
 		ScoreDoc[] hits = topDocs.scoreDocs;
@@ -265,21 +308,26 @@ public class LuceneServer extends OtpGenServer {
 
 		OtpErlangList valuesAsList = this.translator.convert(docs, hits);
 
-		long queryTime = (System.nanoTime() - t0) / 1000;
-		
+		long t3 = System.nanoTime();
+
+		long queryTime = (t3 - t0) / 1000;
+		long searchTime = (t2 - t1) / 1000;
+
 		// Metadata as a proplist
 
-		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 4 : 3];
+		OtpErlangObject[] metadata = new OtpErlangObject[nextPage ? 5 : 4];
 		metadata[0] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("total_hits"),
 				new OtpErlangLong(topDocs.totalHits) });
 		metadata[1] = new OtpErlangTuple(new OtpErlangObject[] {
 				new OtpErlangAtom("first_hit"), new OtpErlangLong(firstHit) });
-		metadata[2] = new OtpErlangTuple(
-				new OtpErlangObject[] { new OtpErlangAtom("query_time"),
-						new OtpErlangLong(queryTime) });
+		metadata[2] = new OtpErlangTuple(new OtpErlangObject[] {
+				new OtpErlangAtom("query_time"), new OtpErlangLong(queryTime) });
+		metadata[3] = new OtpErlangTuple(
+				new OtpErlangObject[] { new OtpErlangAtom("search_time"),
+						new OtpErlangLong(searchTime) });
 		if (nextPage) {
-			metadata[3] = new OtpErlangTuple(new OtpErlangObject[] {
+			metadata[4] = new OtpErlangTuple(new OtpErlangObject[] {
 					new OtpErlangAtom("next_page"),
 					new OtpErlangBinary(pageToken) });
 		}
@@ -339,9 +387,9 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runMatch(final String queryString, final int pageSize,
 			final SortField[] sortFields, final OtpErlangTuple from) {
-		int threadCount = Thread.activeCount();
+		int threadCount = Thread.activeCount() - this.initialThreads;
 		jlog.info("Currently using " + threadCount + " threads");
-		if (threadCount < 25) {
+		if (threadCount <= this.allowedThreads) {
 			new Thread() {
 				@Override
 				public void run() {
@@ -349,7 +397,8 @@ public class LuceneServer extends OtpGenServer {
 				}
 			}.start();
 		} else {
-			jlog.warning("More than 25 threads... running the query locally");
+			jlog.warning("More than " + this.allowedThreads
+					+ " threads... running the query locally");
 			doRunMatch(queryString, pageSize, sortFields, from);
 		}
 	}

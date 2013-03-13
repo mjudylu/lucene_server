@@ -14,6 +14,8 @@ public class LuceneNode {
 	private static final Logger	jlog	= Logger.getLogger(LuceneNode.class
 												.getName());
 
+	private static int			ALLOWED_THREADS;
+
 	/**
 	 * This Erlang node
 	 */
@@ -39,8 +41,10 @@ public class LuceneNode {
 			NODE = args.length >= 3 ? new OtpNode(nodeName, args[2])
 					: new OtpNode(nodeName);
 			PEER = peerName;
-			final OtpGenServer server = new LuceneServer(NODE);
-			jlog.info("Java Lucene Node Started at: " + nodeName + "\nConnected to: " + PEER);
+			ALLOWED_THREADS = args.length >= 4 ? Integer.parseInt(args[3]) : 25;
+			final OtpGenServer server = new LuceneServer(NODE, ALLOWED_THREADS);
+			jlog.info("Java Lucene Node Started at: " + nodeName
+					+ "\nConnected to: " + PEER);
 			forever(server);
 			System.out.println("READY");
 		} catch (IOException e1) {
