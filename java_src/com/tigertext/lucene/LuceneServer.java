@@ -13,7 +13,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WhitespaceTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
@@ -22,6 +21,7 @@ import org.apache.lucene.queryParser.ext.Extensions;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -64,6 +64,10 @@ public class LuceneServer extends OtpGenServer {
 
 	private int						allowedThreads;
 
+	private int						initialThreads;
+
+	private SearcherManager			searcherManager;
+
 	// TODO: Let the user configure the internal parameters (i.e. analyzer,
 	// index, writer)
 	/**
@@ -84,6 +88,7 @@ public class LuceneServer extends OtpGenServer {
 		super(host, "lucene_server");
 
 		this.allowedThreads = allowedThreads;
+		this.initialThreads = Thread.activeCount() + 2;
 
 		this.analyzer = new ReusableAnalyzerBase() {
 			@Override
@@ -112,6 +117,25 @@ public class LuceneServer extends OtpGenServer {
 			del("to:delete");
 		} catch (UnsupportedFieldTypeException e) {
 		}
+		final SearcherManager searcherManager = new SearcherManager(
+				this.writer, true, null);
+		this.searcherManager = searcherManager;
+		new Thread() {
+			@Override
+			public void run() {
+				try {
+					sleep(500);
+				} catch (InterruptedException e) {
+					return;
+				}
+				try {
+					searcherManager.maybeRefresh();
+				} catch (IOException ioe) {
+					jlog.severe("Couldn't refresh searcher:\n\t" + ioe);
+					ioe.printStackTrace();
+				}
+			};
+		}.run();
 	}
 
 	@Override
@@ -247,11 +271,11 @@ public class LuceneServer extends OtpGenServer {
 			throws IOException, ParseException {
 
 		long t0 = System.nanoTime();
-		IndexReader reader = IndexReader.open(this.index);
+
+		this.searcherManager.maybeRefresh();
+		IndexSearcher searcher = this.searcherManager.acquire();
 
 		Query q = this.queryParser().parse(pageToken.getQueryString());
-
-		IndexSearcher searcher = new IndexSearcher(reader);
 		TopDocs topDocs;
 
 		Sort sort = new Sort(pageToken.getSortFields());
@@ -363,7 +387,7 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runMatch(final String queryString, final int pageSize,
 			final SortField[] sortFields, final OtpErlangTuple from) {
-		int threadCount = Thread.activeCount() - 2; // Main one and this one
+		int threadCount = Thread.activeCount() - this.initialThreads;
 		jlog.info("Currently using " + threadCount + " threads");
 		if (threadCount <= this.allowedThreads) {
 			new Thread() {
