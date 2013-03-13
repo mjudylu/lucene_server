@@ -124,7 +124,7 @@ public class LuceneServer extends OtpGenServer {
 			@Override
 			public void run() {
 				try {
-					sleep(500);
+					sleep(10000);
 				} catch (InterruptedException e) {
 					return;
 				}
@@ -302,6 +302,8 @@ public class LuceneServer extends OtpGenServer {
 			docs.add(searcher.doc(sd.doc));
 		}
 		searcher.close();
+		searcherManager.release(searcher);
+		searcher = null;
 
 		boolean nextPage = hits.length == pageSize
 				&& pageToken.incrementFirstHit(pageSize) <= topDocs.totalHits;
