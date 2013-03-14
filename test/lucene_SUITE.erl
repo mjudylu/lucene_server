@@ -1,13 +1,13 @@
 -module(lucene_SUITE).
 
--export([all/0, keys/1, stop/1, add_del_clear/1, complete_coverage/1, init_per_suite/1, end_per_suite/1]).
+-export([all/0, keys/1, stop/1, add_del_clear/1, save/1, complete_coverage/1, init_per_suite/1, end_per_suite/1]).
 
 -include("lucene.hrl").
 
 -type config() :: [{atom(), term()}].
 
 -spec all() -> [atom()].
-all() -> [add_del_clear, keys, stop, complete_coverage].
+all() -> [add_del_clear, keys, stop, save, complete_coverage].
 
 -spec init_per_suite(config()) -> config().
 init_per_suite(Config) ->
@@ -18,6 +18,18 @@ init_per_suite(Config) ->
 -spec end_per_suite(config()) -> config().
 end_per_suite(Config) ->
   Config.
+
+-spec save(config()) -> _.
+save(_Config) ->
+	ok = file:make_dir("test_index"),
+	try
+		ok = lucene:save("test_index"),
+		timer:sleep(2000),
+		[_|_] = filelib:wildcard("test_index/*")
+	after
+		[file:delete(F) || F <- filelib:wildcard("test_index/*")],
+		file:del_dir("test_index")
+	end.
 
 -spec complete_coverage(config()) -> _.
 complete_coverage(_Config) ->
