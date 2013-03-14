@@ -1,5 +1,6 @@
 package com.tigertext.lucene;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.WhitespaceTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.IndexFileNameFilter;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryParser.ParseException;
@@ -27,6 +29,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
@@ -183,7 +186,9 @@ public class LuceneServer extends OtpGenServer {
 			OtpErlangException {
 		OtpErlangTuple cmdTuple = (OtpErlangTuple) cmd;
 		String cmdName = ((OtpErlangAtom) cmdTuple.elementAt(0)).atomValue();
-		if (cmdName.equals("clear")) { // {clear}
+		if (cmdName.equals("save")) { // {save, Path}
+			save(((OtpErlangString) cmdTuple.elementAt(1)).stringValue());
+		} else if (cmdName.equals("clear")) { // {clear}
 			clear();
 		} else if (cmdName.equals("del")) {
 			// {del, Query :: string()}
@@ -200,6 +205,22 @@ public class LuceneServer extends OtpGenServer {
 		} else if (cmdName.equals("stop")) { // {stop}
 			jlog.info("Stopping");
 			throw new OtpStopException();
+		}
+	}
+
+	private void save(String dir) {
+		File folder = new File(dir);
+		try {
+			Directory dest = FSDirectory.open(folder);
+			IndexFileNameFilter filter = IndexFileNameFilter.getFilter();
+			for (String file : this.index.listAll()) {
+				if (filter.accept(null, file)) {
+					this.index.copy(dest, file, file);
+				}
+			}
+		} catch (IOException ioe) {
+			jlog.severe("Couldn't copy index:\n\t" + ioe);
+			ioe.printStackTrace();
 		}
 	}
 

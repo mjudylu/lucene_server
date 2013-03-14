@@ -18,7 +18,7 @@
 -export([start_link/0]).
 
 -export([process/0]).
--export([add/1, del/1, clear/0, stop/0]).
+-export([add/1, del/1, clear/0, save/1, stop/0]).
 -export([match/2, match/3, match/4, continue/2, continue/3]).
 
 -record(state, {java_port :: port(),
@@ -74,6 +74,10 @@ stop() -> gen_server:cast(?LUCENE_SERVER, {stop}).
 %%      <b>USE IT WITH CAUTION</b>
 -spec clear() -> ok.
 clear() -> gen_server:cast(?LUCENE_SERVER, {clear}).
+
+%% @doc Saves the index to a folder.
+-spec save(string()) -> ok.
+save(Folder) -> gen_server:cast(?LUCENE_SERVER, {save, Folder}).
 
 %% @doc Registers a list of docs
 -spec add([doc()]) -> ok.
