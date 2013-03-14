@@ -88,7 +88,7 @@ public class LuceneServer extends OtpGenServer {
 		super(host, "lucene_server");
 
 		this.allowedThreads = allowedThreads;
-		this.initialThreads = Thread.activeCount() + 2;
+		this.initialThreads = Thread.activeCount() + 3;
 
 		this.analyzer = new ReusableAnalyzerBase() {
 			@Override
@@ -120,22 +120,22 @@ public class LuceneServer extends OtpGenServer {
 		final SearcherManager searcherManager = new SearcherManager(
 				this.writer, true, null);
 		this.searcherManager = searcherManager;
-		new Thread() {
+		new Thread("SearcherManager-refresher") {
 			@Override
 			public void run() {
 				try {
-					sleep(500);
-				} catch (InterruptedException e) {
-					return;
-				}
-				try {
-					searcherManager.maybeRefresh();
+					while (true) {
+						searcherManager.maybeRefresh();
+						sleep(10000);
+					}
 				} catch (IOException ioe) {
 					jlog.severe("Couldn't refresh searcher:\n\t" + ioe);
 					ioe.printStackTrace();
+				} catch (InterruptedException e) {
+					return;
 				}
 			};
-		}.run();
+		}.start();
 	}
 
 	@Override
@@ -302,6 +302,8 @@ public class LuceneServer extends OtpGenServer {
 			docs.add(searcher.doc(sd.doc));
 		}
 		searcher.close();
+		searcherManager.release(searcher);
+		searcher = null;
 
 		boolean nextPage = hits.length == pageSize
 				&& pageToken.incrementFirstHit(pageSize) <= topDocs.totalHits;
@@ -349,7 +351,7 @@ public class LuceneServer extends OtpGenServer {
 	 */
 	protected void runContinue(final Object pageToken, final int pageSize,
 			final OtpErlangTuple from) {
-		new Thread() {
+		new Thread("continue-runner") {
 			@Override
 			public void run() {
 				OtpErlangObject reply = null;
@@ -390,7 +392,7 @@ public class LuceneServer extends OtpGenServer {
 		int threadCount = Thread.activeCount() - this.initialThreads;
 		jlog.info("Currently using " + threadCount + " threads");
 		if (threadCount <= this.allowedThreads) {
-			new Thread() {
+			new Thread("query-runner") {
 				@Override
 				public void run() {
 					doRunMatch(queryString, pageSize, sortFields, from);
@@ -398,8 +400,12 @@ public class LuceneServer extends OtpGenServer {
 			}.start();
 		} else {
 			jlog.warning("More than " + this.allowedThreads
-					+ " threads... running the query locally");
-			doRunMatch(queryString, pageSize, sortFields, from);
+					+ " threads... waiting...");
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+			}
+			runMatch(queryString, pageSize, sortFields, from);
 		}
 	}
 
