@@ -125,9 +125,7 @@ public class LuceneServer extends OtpGenServer {
 			public void run() {
 				try {
 					while (true) {
-						jlog.warning("Refreshing manager...");
 						searcherManager.maybeRefresh();
-						jlog.warning("...manager refreshed");
 						sleep(10000);
 					}
 				} catch (IOException ioe) {
