@@ -50,6 +50,7 @@ import com.ericsson.otp.stdlib.OtpStopException;
 import com.tigertext.lucene.DocumentTranslator.UnsupportedFieldTypeException;
 import com.tigertext.lucene.ext.ErlangParserExtension;
 import com.tigertext.lucene.ext.NearParserExtension;
+import com.tigertext.lucene.ext.RedisParserExtension;
 
 /**
  * @author Fernando Benavides <elbrujohalcon@inaka.net>
@@ -111,6 +112,7 @@ public class LuceneServer extends OtpGenServer {
 		Extensions ext = new Extensions('.');
 		ext.add("near", new NearParserExtension());
 		ext.add("erlang", new ErlangParserExtension(this.translator));
+		ext.add("redis", new RedisParserExtension());
 		this.extensions = ext;
 		try {
 			add(this.translator.convert(new OtpErlangList(new OtpErlangList(
