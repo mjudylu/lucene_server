@@ -180,12 +180,22 @@ public class ErlangFilter extends Filter {
 		docValues = new OtpErlangObject[origs.length];
 		for (int i = 0; i < origs.length; i++) {
 			if (origs[i] != null) {
-				docValues[i] = new OtpErlangBinary(origs[i].getBytes());
+				docValues[i] = new OtpErlangBinary(getBytesFast(origs[i]));
 			} else {
 				docValues[i] = new OtpErlangAtom("undefined");
 			}
 		}
 		return docValues;
+	}
+
+	private static byte[] getBytesFast(String str) {
+		final char buffer[] = new char[str.length()];
+		final int length = str.length();
+		str.getChars(0, length, buffer, 0);
+		final byte b[] = new byte[length];
+		for (int j = 0; j < length; j++)
+			b[j] = (byte) buffer[j];
+		return b;
 	}
 
 	private OtpErlangObject[] getLongs(IndexReader reader) throws IOException {
