@@ -12,6 +12,8 @@ import org.apache.lucene.search.FieldCache;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.tigertext.redis.RedisManager;
+
 import redis.clients.jedis.Jedis;
 
 /**
@@ -69,12 +71,18 @@ public class RedisFilter extends Filter {
 
 		if (commandParts[0].toUpperCase().equals("SISMEMBER")
 				&& commandParts.length == 3) {
-			Jedis jedis = new Jedis(this.host, this.port);
+			
+			Jedis jedis = RedisManager.getInstance().getJedis(
+					this.host + ":" + this.port);
+			
 			if (this.db != 0)
 				jedis.select(this.db);
 
 			String key = commandParts[1];
 			Set<String> members = jedis.smembers(key);
+			
+			RedisManager.getInstance().returnJedis(this.host + ":" + this.port,
+					jedis);
 
 			for (int docid = 0; docid < docValues.length; docid++) {
 				if (members == null) {
