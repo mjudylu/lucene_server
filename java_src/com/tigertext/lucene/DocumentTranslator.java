@@ -30,8 +30,9 @@ import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
 /**
+ * Translator to convert erlang proplists into lucene docs
+ * 
  * @author Fernando Benavides <elbrujohalcon@inaka.net>
- * @doc Translator to convert erlang proplists into lucene docs
  */
 @SuppressWarnings("deprecation")
 public class DocumentTranslator {
@@ -50,8 +51,7 @@ public class DocumentTranslator {
 	private Map<String, FieldType>	fields;
 
 	/**
-	 * @author Fernando Benavides <elbrujohalcon@inaka.net>
-	 * @doc Allowed field types
+	 * @author Fernando Benavides <elbrujohalcon@inaka.net> Allowed field types
 	 */
 	public enum FieldType {
 		/**
@@ -85,8 +85,9 @@ public class DocumentTranslator {
 	}
 
 	/**
+	 * The field type was not in the {@link FieldType} enum
+	 * 
 	 * @author Fernando Benavides <elbrujohalcon@inaka.net>
-	 * @doc The field type was not in the {@link FieldType} enum
 	 */
 	public class UnsupportedFieldTypeException extends Exception {
 		/**
@@ -160,7 +161,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc Creates a new {@link SortField}
+	 * Creates a new {@link SortField}
+	 * 
 	 * @param otpFieldName
 	 *            Field Name
 	 * @return a sorting field
@@ -187,7 +189,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc converts a list of erlang objects into a list of lucene documents
+	 * converts a list of erlang objects into a list of lucene documents
+	 * 
 	 * @param objects
 	 *            original erlang proplists
 	 * @return a list of lucene documents
@@ -241,7 +244,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds a field to a document
+	 * adds a field to a document
+	 * 
 	 * @param doc
 	 *            a Lucene document
 	 * @param key
@@ -292,7 +296,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds a double field to the document
+	 * adds a double field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -305,7 +310,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds a float field to the document
+	 * adds a float field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -328,7 +334,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds a long field to the document
+	 * adds a long field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -344,7 +351,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds an integer field to the document
+	 * adds an integer field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -367,8 +375,9 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds an empty string field to the document (because empty come as
-	 *      empty lists from erlang)
+	 * adds an empty string field to the document (because empty come as empty
+	 * lists from erlang)
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -390,7 +399,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds an atom field to the document
+	 * adds an atom field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -414,7 +424,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc adds a string field to the document
+	 * adds a string field to the document
+	 * 
 	 * @param doc
 	 *            Lucene document
 	 * @param key
@@ -427,7 +438,8 @@ public class DocumentTranslator {
 	}
 
 	/**
-	 * @doc Looks up the field definition and returns its type
+	 * Looks up the field definition and returns its type
+	 * 
 	 * @param fieldName
 	 *            Field Name
 	 * @return Field Type

@@ -12,8 +12,10 @@ import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
 /**
+ * Specialized query parser
+ * 
  * @author Fernando Benavides <elbrujohalcon@inaka.net>
- * @doc Specialized query parser
+ * 
  */
 public class LuceneQueryParser extends ExtendableQueryParser {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class

@@ -38,3 +38,6 @@ test: erl
 
 doc: erl
 	rebar skip_deps=true doc
+	javadoc -overview doc/overview-summary.html \
+			-classpath ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/commons-pool-1.4.jar:./priv/jedis-2.1.0.jar:./priv/geonames-source-1.1.6.jar:priv/lucene-core-3.6.2.jar:priv/lucene-spatial-3.6.2.jar:priv/lucene-queryparser-3.6.2.jar \
+			-verbose -d doc/java -use -version -author `find java_src -name *.java`

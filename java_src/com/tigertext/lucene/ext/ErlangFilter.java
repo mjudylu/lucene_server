@@ -29,9 +29,10 @@ import com.tigertext.lucene.DocumentTranslator.FieldType;
 import com.tigertext.lucene.LuceneNode;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Erlang filter: filters
- *         results according to an erlang module and function and keeps them
- *         cached for further use
+ * Erlang filter: filters results according to an erlang module and function and
+ * keeps them cached for further use
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class ErlangFilter extends Filter {
 	private static final Logger		jlog				= Logger.getLogger(ErlangFilter.class

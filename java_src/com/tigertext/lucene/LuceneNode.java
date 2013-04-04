@@ -7,8 +7,9 @@ import com.ericsson.otp.erlang.OtpNode;
 import com.ericsson.otp.stdlib.OtpGenServer;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Main node for the Lucene
- *         Server
+ * Main node for the Lucene Server
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class LuceneNode {
 	private static final Logger	jlog	= Logger.getLogger(LuceneNode.class

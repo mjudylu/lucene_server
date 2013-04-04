@@ -15,15 +15,15 @@ import org.apache.lucene.search.function.ValueSourceQuery;
 import com.tigertext.lucene.DocumentTranslator;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Extension to run
- *         ".erlang" queries. These queries should be in the form
- *         Field.erlang:Mod:Fun:Args where -spec Mod:Fun(Args, string()) ->
- *         false | float(). If Mod:Fun(Args…, Value) returns false, the document
- *         doesn't match Otherwise the result is the score. Args will be parsed
- *         on the Erlang node using… {ok, A, _} = erl_scan:string(Args++".").
- *         {ok, B} = erl_parse:parse_exprs(A). {value, Arguments, _} =
- *         erl_eval:exprs(B, []). …So the final call will be erlang:apply(Mod,
- *         Fun, Arguments ++ [Value]).
+ * Extension to run ".erlang" queries. These queries should be in the form
+ * Field.erlang:Mod:Fun:Args where -spec Mod:Fun(Args, string()) -> false |
+ * float(). If Mod:Fun(Args…, Value) returns false, the document doesn't match
+ * Otherwise the result is the score. Args will be parsed on the Erlang node
+ * using… {ok, A, _} = erl_scan:string(Args++"."). {ok, B} =
+ * erl_parse:parse_exprs(A). {value, Arguments, _} = erl_eval:exprs(B, []). …So
+ * the final call will be erlang:apply(Mod, Fun, Arguments ++ [Value]).
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class ErlangParserExtension extends ParserExtension {
 	private static final Logger	jlog	= Logger.getLogger(ErlangParserExtension.class

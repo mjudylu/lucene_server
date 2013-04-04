@@ -6,8 +6,9 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.FieldComparatorSource;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Source for
- *         {@link MissingLastStringOrdValComparator}
+ * Source for {@link MissingLastStringOrdValComparator}
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class MissingLastStringOrdValComparatorSource extends
 		FieldComparatorSource {

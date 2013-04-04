@@ -19,8 +19,9 @@ import com.tigertext.lucene.DocumentTranslator;
 import com.tigertext.lucene.LuceneServer;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net>
  * Extension to run ".near" queries
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 @SuppressWarnings("deprecation")
 public class NearParserExtension extends ParserExtension {
@@ -49,8 +50,9 @@ public class NearParserExtension extends ParserExtension {
 						DocumentTranslator.MAX_TIER);
 
 				Filter cartesianFilter = cpf.getBoundingArea(lat, lng, miles);
-				DistanceFilter filter = new LatLongDistanceFilter(cartesianFilter, lat,
-						lng, miles, key + "`lat", key + "`lng");
+				DistanceFilter filter = new LatLongDistanceFilter(
+						cartesianFilter, lat, lng, miles, key + "`lat", key
+								+ "`lng");
 
 				ValueSource valSrc = new DistanceValueSource(filter);
 

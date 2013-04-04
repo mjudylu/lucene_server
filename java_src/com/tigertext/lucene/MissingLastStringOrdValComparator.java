@@ -6,9 +6,11 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.FieldComparator;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Works like
- *         {@link org.apache.lucene.search.FieldComparator.StringValComparator}
- *         but it sorts null values at the end
+ * Works like
+ * {@link org.apache.lucene.search.FieldComparator.StringValComparator} but it
+ * sorts null values at the end
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class MissingLastStringOrdValComparator extends FieldComparator<String> {
 
