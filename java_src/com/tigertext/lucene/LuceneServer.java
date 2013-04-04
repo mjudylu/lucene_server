@@ -37,7 +37,6 @@ import org.apache.lucene.util.Version;
 import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangBinary;
 import com.ericsson.otp.erlang.OtpErlangException;
-import com.ericsson.otp.erlang.OtpErlangExit;
 import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangLong;
 import com.ericsson.otp.erlang.OtpErlangObject;
@@ -231,8 +230,14 @@ public class LuceneServer extends OtpGenServer {
 	}
 
 	@Override
-	protected void handleExit(OtpErlangExit oee) throws OtpErlangExit,
-			OtpStopException {
+	protected void terminate(OtpErlangException oee) {
+		if (oee != null) {
+			jlog.warning("Lucene Server terminating with reason " + oee);
+			System.exit(1);
+		} else {
+			jlog.info("Lucene Server terminating normally");
+			System.exit(0);
+		}
 	}
 
 	private QueryParser queryParser() {

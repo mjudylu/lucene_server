@@ -54,13 +54,28 @@ public abstract class OtpSysProcess {
 
 	/**
 	 * Gets the process running
-	 * 
-	 * @throws OtpErlangException
-	 *             if something fails :)
 	 */
-	public final void start() throws OtpErlangException {
-		loop();
-		jlog.fine("...leaving");
+	public final void start() {
+		new Thread(this.mbox.getName()) {
+			@Override
+			public void run() {
+				loop();
+				jlog.fine("...leaving");
+			}
+		}.start();
+	}
+
+	/**
+	 * Gets the process running and links it to the caller
+	 * 
+	 * @param caller
+	 *            Process that starts this one
+	 * @throws OtpErlangExit
+	 *             if this process can't be linked to the caller
+	 */
+	public final void startLink(OtpErlangPid caller) throws OtpErlangExit {
+		this.mbox.link(caller);
+		start();
 	}
 
 	protected void handleSystemMessage(OtpErlangObject req, OtpErlangTuple from)
@@ -172,12 +187,9 @@ public abstract class OtpSysProcess {
 	/**********************************************************************************************/
 
 	/**
-	 * To be overrided by OtpGen… processes
-	 * 
-	 * @throws OtpErlangException
-	 *             when something fails :)
+	 * To be overrided by OtpGen... processes
 	 */
-	protected abstract void loop() throws OtpErlangException;
+	protected abstract void loop();
 
 	/**
 	 * Override this function if you want to trap exits
