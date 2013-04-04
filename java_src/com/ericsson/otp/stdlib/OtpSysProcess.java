@@ -17,7 +17,7 @@ import com.ericsson.otp.erlang.OtpNode;
  * @author Fernando Benavides <elbrujohalcon@inaka.net>
  * 
  */
-abstract class OtpSysProcess {
+public abstract class OtpSysProcess {
 	private static final Logger	jlog	= Logger.getLogger(OtpSysProcess.class
 												.getName());
 	private OtpMbox				mbox;
