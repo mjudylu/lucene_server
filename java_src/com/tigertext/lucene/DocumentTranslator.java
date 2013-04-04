@@ -29,21 +29,70 @@ import com.ericsson.otp.erlang.OtpErlangRangeException;
 import com.ericsson.otp.erlang.OtpErlangString;
 import com.ericsson.otp.erlang.OtpErlangTuple;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * @doc Translator to convert erlang proplists into lucene docs
+ */
 @SuppressWarnings("deprecation")
 public class DocumentTranslator {
 	private static final Logger		jlog		= Logger.getLogger(DocumentTranslator.class
 														.getName());
 
+	/**
+	 * Highest possible tier for GEO fields
+	 */
 	public static final int			MAX_TIER	= 20;
+	/**
+	 * Lowest possible tier for GEO fields
+	 */
 	public static final int			MIN_TIER	= 4;
 
 	private Map<String, FieldType>	fields;
 
+	/**
+	 * @author Fernando Benavides <elbrujohalcon@inaka.net>
+	 * @doc Allowed field types
+	 */
 	public enum FieldType {
-		STRING, INT, LONG, FLOAT, DOUBLE, GEO, ATOM
+		/**
+		 * Strings
+		 */
+		STRING,
+		/**
+		 * Integers
+		 */
+		INT,
+		/**
+		 * Longs
+		 */
+		LONG,
+		/**
+		 * Floating point numbers
+		 */
+		FLOAT,
+		/**
+		 * Doubles
+		 */
+		DOUBLE,
+		/**
+		 * Geographic coordinates
+		 */
+		GEO,
+		/**
+		 * Atoms
+		 */
+		ATOM
 	}
 
+	/**
+	 * @author Fernando Benavides <elbrujohalcon@inaka.net>
+	 * @doc The field type was not in the {@link FieldType} enum
+	 */
 	public class UnsupportedFieldTypeException extends Exception {
+		/**
+		 * @param class1
+		 *            Type of the field
+		 */
 		public UnsupportedFieldTypeException(
 				Class<? extends OtpErlangObject> class1) {
 			super("Unsupported field type: " + class1);
@@ -52,6 +101,9 @@ public class DocumentTranslator {
 		private static final long	serialVersionUID	= 8966657853257773634L;
 	}
 
+	/**
+	 * Default constructor
+	 */
 	public DocumentTranslator() {
 		this.fields = new HashMap<String, DocumentTranslator.FieldType>();
 	}
@@ -107,6 +159,12 @@ public class DocumentTranslator {
 		}
 	}
 
+	/**
+	 * @doc Creates a new {@link SortField}
+	 * @param otpFieldName
+	 *            Field Name
+	 * @return a sorting field
+	 */
 	public SortField createSortField(OtpErlangAtom otpFieldName) {
 		String fieldName = otpFieldName.atomValue();
 		switch (this.getFieldType(fieldName)) {
@@ -128,6 +186,14 @@ public class DocumentTranslator {
 		}
 	}
 
+	/**
+	 * @doc converts a list of erlang objects into a list of lucene documents
+	 * @param objects
+	 *            original erlang proplists
+	 * @return a list of lucene documents
+	 * @throws UnsupportedFieldTypeException
+	 *             if a proplist contains an invalid field
+	 */
 	public List<Document> convert(OtpErlangList objects)
 			throws UnsupportedFieldTypeException {
 		List<Document> docs = new ArrayList<Document>(objects.arity());
@@ -174,6 +240,17 @@ public class DocumentTranslator {
 		}
 	}
 
+	/**
+	 * @doc adds a field to a document
+	 * @param doc
+	 *            a Lucene document
+	 * @param key
+	 *            field name
+	 * @param value
+	 *            field value
+	 * @throws UnsupportedFieldTypeException
+	 *             if the value has an unsupported type
+	 */
 	public void addField(Document doc, String key, OtpErlangTuple value)
 			throws UnsupportedFieldTypeException {
 		if (value.arity() == 3
@@ -214,10 +291,30 @@ public class DocumentTranslator {
 		this.fields.put(key, FieldType.DOUBLE);
 	}
 
+	/**
+	 * @doc adds a double field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 */
 	public void addField(Document doc, String key, OtpErlangDouble value) {
 		addField(doc, key, value.doubleValue());
 	}
 
+	/**
+	 * @doc adds a float field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 * @throws UnsupportedFieldTypeException
+	 *             if value can't be converted to float
+	 */
 	public void addField(Document doc, String key, OtpErlangFloat value)
 			throws UnsupportedFieldTypeException {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
@@ -230,6 +327,15 @@ public class DocumentTranslator {
 		this.fields.put(key, FieldType.FLOAT);
 	}
 
+	/**
+	 * @doc adds a long field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 */
 	public void addField(Document doc, String key, OtpErlangLong value) {
 		NumericField field = new NumericField(key, Field.Store.YES, true);
 		field.setLongValue(value.longValue());
@@ -237,6 +343,17 @@ public class DocumentTranslator {
 		this.fields.put(key, FieldType.LONG);
 	}
 
+	/**
+	 * @doc adds an integer field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 * @throws UnsupportedFieldTypeException
+	 *             if the value can't be converted to integer
+	 */
 	public void addField(Document doc, String key, OtpErlangInt value)
 			throws UnsupportedFieldTypeException {
 		try {
@@ -249,6 +366,18 @@ public class DocumentTranslator {
 		}
 	}
 
+	/**
+	 * @doc adds an empty string field to the document (because empty come as
+	 *      empty lists from erlang)
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 * @throws UnsupportedFieldTypeException
+	 *             if the list is not empty
+	 */
 	public void addField(Document doc, String key, OtpErlangList value)
 			throws UnsupportedFieldTypeException {
 		if (value.arity() == 0) {
@@ -260,6 +389,15 @@ public class DocumentTranslator {
 		}
 	}
 
+	/**
+	 * @doc adds an atom field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 */
 	public void addField(Document doc, String key, OtpErlangAtom value) {
 		doc.add(new Field(key, value.atomValue(), Field.Store.YES,
 				Field.Index.ANALYZED));
@@ -275,10 +413,25 @@ public class DocumentTranslator {
 		this.fields.put(key, FieldType.STRING);
 	}
 
+	/**
+	 * @doc adds a string field to the document
+	 * @param doc
+	 *            Lucene document
+	 * @param key
+	 *            Field name
+	 * @param value
+	 *            Field value
+	 */
 	public void addField(Document doc, String key, OtpErlangString value) {
 		addField(doc, key, value.stringValue());
 	}
 
+	/**
+	 * @doc Looks up the field definition and returns its type
+	 * @param fieldName
+	 *            Field Name
+	 * @return Field Type
+	 */
 	public FieldType getFieldType(String fieldName) {
 		FieldType type = this.fields.get(fieldName);
 		return type == null ? FieldType.STRING : type;
