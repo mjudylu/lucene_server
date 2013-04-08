@@ -1,4 +1,5 @@
 ERLANG := erl -pa ebin -pa deps/*/ebin -smp enable -s lager -s wpool -setcookie tigertext_lucene ${ERL_ARGS}
+CLASSPATH := ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:"./priv/*"
 
 all: clean
 	rebar get-deps && rebar --verbose compile
@@ -31,11 +32,16 @@ run: erl
 
 test: erl
 	mkdir -p log/ct
+	mkdir -p log/java
+	java -classpath ${CLASSPATH} net.sourceforge.cobertura.instrument.Main bin
+	jar cf priv/lucene-server.jar -C bin .
 	rebar skip_deps=true ct -vvv
+	java -classpath ${CLASSPATH} net.sourceforge.cobertura.reporting.Main --destination log/java java_src
 	open log/ct/index.html
+	open log/java/index.html
 
 doc: erl
 	rebar skip_deps=true doc
 	javadoc -overview doc/overview-summary.html \
-			-classpath ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:./priv/commons-pool-1.4.jar:./priv/jedis-2.1.0.jar:./priv/geonames-source-1.1.6.jar:priv/lucene-core-3.6.2.jar:priv/lucene-spatial-3.6.2.jar:priv/lucene-queryparser-3.6.2.jar \
+			-classpath ${CLASSPATH} \
 			-verbose -d doc/java -use -version -author `find java_src -name *.java`

@@ -105,7 +105,7 @@ init([]) ->
               undefined -> 25
           end,
       Priv = priv_dir(lucene_server),
-      Classpath = string:join([otp_lib("/OtpErlang.jar") | filelib:wildcard(Priv ++ "/*.jar")], ":"),
+      Classpath = otp_lib("/OtpErlang.jar") ++ [$: | Priv ++ "/*"],
       JavaArgs =
           case application:get_env(lucene_server, java_args) of
               {ok, Args} -> Args;
