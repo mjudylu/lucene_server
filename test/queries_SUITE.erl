@@ -31,13 +31,14 @@ rpc(_Config) ->
   PageSize = 5,
 
   ok = lucene:clear(),
-  Docs = [[{i, I}] || I <- lists:seq(PageSize, 1, -1)],
+  Docs = [[{i, I}, {s, [$a+I]}] || I <- lists:seq(PageSize, 1, -1)],
   ok = lucene:add(Docs),
 
   {[], _} = lucene:match("i.erlang:\"queries_SUITE:rpc_return:[false]\"", PageSize),
+  {[], _} = lucene:match("s.erlang:\"queries_SUITE:rpc_return:[false]\"", PageSize),
   {Rs, M} = lucene:match("i.erlang:\"queries_SUITE:rpc_echo\"", PageSize),
   5 = proplists:get_value(total_hits, M),
-  Docs = [[lists:keyfind(i, 1, R)] || R <- Rs],
+  Docs = [lists:keydelete('`score', 1, R) || R <- Rs],
 
   {[], _} = lucene:match("i.erlang:\"queries_SUITE:rpc_not_exported\"", PageSize),
 

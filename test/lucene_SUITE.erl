@@ -33,6 +33,33 @@ save(_Config) ->
 
 -spec complete_coverage(config()) -> _.
 complete_coverage(_Config) ->
+	'wpool_pool-lucene_worker-1' ! ignored_info,
+	timer:sleep(500),
+	{unexpected_call, call} = wpool:call(lucene_worker, call),
+	{ok, state} = lucene_worker:code_change(oldvsn, state, extra),
+
+	OldWorkers = application:get_env(lucene_server, workers),
+	OldWorkersTimeout = application:get_env(lucene_server, workers_timeout),
+	case OldWorkers of
+		undefined -> application:set_env(lucene_server, workers, 400);
+		_ -> application:unset_env(lucene_server, workers)
+	end,
+	case OldWorkersTimeout of
+		undefined -> application:set_env(lucene_server, workers_timeout, 5000);
+		_ -> application:unset_env(lucene_server, workers_timeout)
+	end,
+
+	{error, {already_started, _}} = lucene_worker:start_pool(),
+
+	case OldWorkers of
+		undefined -> application:unset_env(lucene_server, workers);
+		{ok, OW} -> application:set_env(lucene_server, workers, OW)
+	end,
+	case OldWorkersTimeout of
+		undefined -> application:unset_env(lucene_server, workers_timeout);
+		{ok, OWT} -> application:set_env(lucene_server, workers_timeout, OWT)
+	end,
+
 	lucene ! ignored_info,
 	timer:sleep(500),
 	ok = gen_server:cast(lucene, ignored_cast),
