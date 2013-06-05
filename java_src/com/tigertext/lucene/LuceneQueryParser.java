@@ -11,12 +11,30 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.util.Version;
 
+/**
+ * Specialized query parser
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ * 
+ */
 public class LuceneQueryParser extends ExtendableQueryParser {
 	private static final Logger	jlog	= Logger.getLogger(LuceneServer.class
 												.getName());
 
 	private DocumentTranslator	documentTranslator;
 
+	/**
+	 * Creates a new {@link LuceneQueryParser} instance
+	 * 
+	 * @param version
+	 *            the lucene version to use.
+	 * @param analyzer
+	 *            the analyzer used to find terms in a query string
+	 * @param documentTranslator
+	 *            The {@link DocumentTranslator} to use to parse fields
+	 * @param ext
+	 *            the query parser extensions
+	 */
 	public LuceneQueryParser(Version version, Analyzer analyzer,
 			DocumentTranslator documentTranslator, Extensions ext) {
 		super(version, "", analyzer, ext);

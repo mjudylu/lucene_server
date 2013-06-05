@@ -7,9 +7,10 @@ import org.apache.lucene.search.function.DocValues;
 import org.apache.lucene.search.function.ValueSource;
 
 /**
+ * {@link ValueSource} where values are taken from the execution of an Redis
+ * function
+ * 
  * @author Fernando Benavides <elbrujohalcon@inaka.net>
- * @doc {@link ValueSource} where values are taken from the execution of an
- *      Redis function
  */
 public class RedisValueSource extends ValueSource {
 

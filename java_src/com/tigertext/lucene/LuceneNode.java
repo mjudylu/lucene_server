@@ -7,8 +7,9 @@ import com.ericsson.otp.erlang.OtpNode;
 import com.ericsson.otp.stdlib.OtpGenServer;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Main node for the Lucene
- *         Server
+ * Main node for the Lucene Server
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class LuceneNode {
 	private static final Logger	jlog	= Logger.getLogger(LuceneNode.class
@@ -45,31 +46,12 @@ public class LuceneNode {
 			final OtpGenServer server = new LuceneServer(NODE, ALLOWED_THREADS);
 			jlog.info("Java Lucene Node Started at: " + nodeName
 					+ "\nConnected to: " + PEER);
-			forever(server);
+			server.start();
 			System.out.println("READY");
 		} catch (IOException e1) {
 			jlog.severe("Couldn't create node: " + e1);
 			e1.printStackTrace();
 			System.exit(1);
 		}
-	}
-
-	protected static void forever(final OtpGenServer server) {
-		new Thread("LuceneServer") {
-			@Override
-			public void run() {
-				while (true) {
-					try {
-						server.start();
-						jlog.info("Node terminating since the server terminated normally");
-						System.exit(0);
-					} catch (Exception e) {
-						jlog.severe("Server crashed: " + e);
-						e.printStackTrace();
-						jlog.info("Restarting the server");
-					}
-				}
-			}
-		}.start();
 	}
 }

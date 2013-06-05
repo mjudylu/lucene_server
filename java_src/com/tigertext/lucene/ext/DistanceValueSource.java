@@ -7,6 +7,10 @@ import org.apache.lucene.search.function.DocValues;
 import org.apache.lucene.search.function.ValueSource;
 import org.apache.lucene.spatial.tier.DistanceFilter;
 
+/**
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
+ *
+ */
 @SuppressWarnings("deprecation")
 public class DistanceValueSource extends ValueSource {
 	private static final int	hcode				= DistanceValueSource.class
@@ -15,6 +19,9 @@ public class DistanceValueSource extends ValueSource {
 	private DistanceFilter		filter;
 	protected int				nextDocBase;
 
+	/**
+	 * @param filter Filter to apply to values
+	 */
 	public DistanceValueSource(DistanceFilter filter) {
 		this.filter = filter;
 	}

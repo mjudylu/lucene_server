@@ -8,7 +8,9 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Jedis Pool manager
+ * Jedis Pool manager
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class RedisManager {
 	private static final RedisManager	instance	= new RedisManager();

@@ -13,12 +13,13 @@ import org.apache.lucene.search.function.ValueSource;
 import org.apache.lucene.search.function.ValueSourceQuery;
 
 /**
- * @author Fernando Benavides <elbrujohalcon@inaka.net> Extension to run
- *         ".redis" queries. These queries should be in the form
- *         "Field.redis:[REDIS-COMMAND]", where [REDIS-COMMAND] can include a
- *         {%field} value that will be replaced by the field value. The redis
- *         command will then be executed and its result is expected to be a
- *         number which will be considered the resulting score
+ * Extension to run ".redis" queries. These queries should be in the form
+ * "Field.redis:[REDIS-COMMAND]", where [REDIS-COMMAND] can include a {%field}
+ * value that will be replaced by the field value. The redis command will then
+ * be executed and its result is expected to be a number which will be
+ * considered the resulting score
+ * 
+ * @author Fernando Benavides <elbrujohalcon@inaka.net>
  */
 public class RedisParserExtension extends ParserExtension {
 	private static final Logger	jlog	= Logger.getLogger(ErlangParserExtension.class

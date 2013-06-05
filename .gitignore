@@ -11,3 +11,4 @@ erl_crash.dump
 *.beam
 *.log
 lucene-server.jar
+cobertura.ser

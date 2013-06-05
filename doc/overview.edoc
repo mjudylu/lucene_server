@@ -19,7 +19,6 @@ To find documents according to a query use: <code>lucene:match(Query, PageSize).
 If no <code>Timeout</code> is specified, it defaults to 5000.
 Both functions may return:
 <ul>
-<li>the atom <code>'$end_of_table'</code> if there're no results matching the query.</li>
 <li>the atom <code>timeout</code> if it took more than <code>Timeout</code> milliseconds to find the desired docs</li>
 <li>the first page of results together with metadata as described below</li>
 </ul>
