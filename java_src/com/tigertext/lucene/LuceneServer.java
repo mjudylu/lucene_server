@@ -193,7 +193,13 @@ public class LuceneServer extends OtpGenServer {
 			clear();
 		} else if (cmdName.equals("del")) {
 			// {del, Query :: string()}
-			del(((OtpErlangString) cmdTuple.elementAt(1)).stringValue());
+			if (cmdTuple.elementAt(1) instanceof OtpErlangString) {
+				del(((OtpErlangString) cmdTuple.elementAt(1)).stringValue());
+			} else {
+				jlog.severe("Received " + cmdTuple.elementAt(1)
+						+ " instead of a string in " + cmdTuple);
+				throw new OtpStopException();
+			}
 		} else if (cmdName.equals("add")) {
 			// {add, Docs :: [[{atom(), string()}]]}
 			try {
