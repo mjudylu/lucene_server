@@ -1,5 +1,5 @@
 ERLANG := erl -pa ebin -pa deps/*/ebin -smp enable -s lager -s wpool -setcookie tigertext_lucene ${ERL_ARGS}
-CLASSPATH := ./bin:/usr/local/lib/erlang/lib/jinterface-1.5.6/priv/OtpErlang.jar:"./priv/*"
+CLASSPATH := ./bin:"./priv/*"
 
 all: clean
 	rebar get-deps && rebar --verbose compile

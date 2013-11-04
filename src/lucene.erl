@@ -105,7 +105,7 @@ init([]) ->
               undefined -> 25
           end,
       Priv = priv_dir(lucene_server),
-      Classpath = otp_lib("/OtpErlang.jar") ++ [$: | Priv ++ "/*"],
+      Classpath = Priv ++ "/*",
       JavaArgs =
           case application:get_env(lucene_server, java_args) of
               {ok, Args} -> Args;
@@ -170,12 +170,6 @@ priv_dir(App) ->
       lager:info("Couldn't find priv dir for lucene_server, using ./priv"), "./priv";
     PrivDir -> filename:absname(PrivDir)
   end.
-
-%% @private
-%% @doc returns the absolute path to the otp erlang JAR
-otp_lib(Path) ->
-  JPriv = priv_dir(jinterface),
-  test_priv_path(Path, file:read_file_info(JPriv ++ Path), JPriv ++ Path).
 
 test_priv_path(_, {ok, _}, Absolute_Path) -> Absolute_Path;
 test_priv_path(Path, {error, _}, _) -> filename:absname(code:lib_dir() ++ Path).
