@@ -58,7 +58,7 @@ public class ErlangFilter extends Filter {
 	 *            Erlang function
 	 * @param arg
 	 *            First argument(s) on the call to mod:fun. They're written like
-	 *            io_lib:format(É). They'll be parsed on the Erlang side before
+	 *            io_lib:format(...). They'll be parsed on the Erlang side before
 	 *            calling mod:fun
 	 * @param fieldName
 	 *            Lucene field to consider

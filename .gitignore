@@ -12,3 +12,4 @@ erl_crash.dump
 *.log
 lucene-server.jar
 cobertura.ser
+OtpErlang.jar
